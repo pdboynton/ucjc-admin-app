@@ -1,0 +1,124 @@
+body {
+  font-family: Arial, sans-serif;
+  padding: 5rem 2rem;
+  background: #f5f7fa;
+  color: #333;
+}
+
+h1 {
+  color: #3a6ea5;
+}
+
+form {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: white;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+input, textarea, button {
+  display: block;
+  margin: 0.5rem 0;
+  padding: 0.5rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+section {
+  margin-top: 2rem;
+}
+
+#event-list li {
+  background: #fff;
+  padding: 1rem;
+  margin-bottom: 0.5rem;
+  border-left: 4px solid #3a6ea5;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.event-actions button {
+  margin-right: 0.5rem;
+}
+
+section {
+  display: none;
+  margin-top: 2rem;
+}
+
+section.active {
+  display: block;
+}
+
+.nav-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: space-around;
+  background: #ffffff;
+  border-top: 1px solid #ccc;
+  padding: 0.5rem 0;
+  z-index: 1000;
+}
+
+.nav-bar button {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  color: #3a6ea5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.nav-bar button span {
+  font-size: 0.7rem;
+}
+
+.nav-bar button.active {
+  color: #E3B23C; /* highlight color */
+  font-weight: bold;
+}
+
+/* Header */
+.home-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: stretch;
+  z-index: 100; /* ensures it stays above other elements */
+  background-color: var(--bg-light)
+}
+
+.dark .home-header {
+  background-color: var(--bg-dark)
+}
+
+.ucjc-logo {
+  width: 60px;
+  object-fit: cover;
+}
+
+.home-title h1 {
+  font-size: 1.2rem;
+  margin: 0;
+  color: var(--accent-light);
+}
+
+.home-title .subtitle {
+  font-size: 0.9rem;
+  color: var(--secondary-light);
+}
+
+.home-title h2 {
+  font-size: 1rem;
+  margin: 0.3rem 0 0;
+  color: var(--accent-light);
+}
