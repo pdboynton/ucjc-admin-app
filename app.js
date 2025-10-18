@@ -1,7 +1,7 @@
 navigator.serviceWorker.register("firebase-messaging-sw.js");
 let access_token = null;
 let fcmToken = null;
-
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 let numButtonClicks = 0;
 function buttonClicked() {
     numButtonClicks = numButtonClicks + 1;
