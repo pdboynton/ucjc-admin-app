@@ -1,13 +1,10 @@
-// /api/sendNotification.js
-
 import admin from "firebase-admin";
-const path = require("path");
-const fs = require("fs");
+import path from "path";
+import fs from "fs";
 
-const serviceAccountPath = path.join(__dirname, "../config/service-account.json");
+const serviceAccountPath = path.join(process.cwd(), "config/service-account.json");
 const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, "utf8"));
 
-// Initialize Firebase Admin SDK
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
