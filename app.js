@@ -256,7 +256,7 @@ async function sendPushNotification(token) {
   };
 
   try {
-    const res = await fetch("/api/sendNotification.cjs", {
+    const res = await fetch("/api/sendNotification", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
@@ -278,7 +278,7 @@ document.getElementById("manual-notify-form").addEventListener("submit", async (
   const title = document.getElementById("notify-title").value;
   const body = document.getElementById("notify-body").value;
 
-  await fetch("/api/sendNotification.cjs", {
+  await fetch("/api/sendNotification", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ token: fcmToken, title, body })
