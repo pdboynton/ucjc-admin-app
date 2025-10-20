@@ -1,8 +1,14 @@
-import admin from "firebase-admin";
-
 // Use environment variable for security
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 // import serviceAccount from "service-account.json"; // adjust path if needed (use local file)
+
+import admin from "firebase-admin";
+
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+}
 
 // Initialize Firebase Admin SDK once
 if (!admin.apps.length) {
@@ -16,30 +22,27 @@ export default async function handler(req, res) {
 
   const { token, title, body } = req.body;
 
-  console.log("Sending FCM to:", token);
+  console.log("Incoming notification request:");
+  console.log("Token:", token);
   console.log("Title:", title);
   console.log("Body:", body);
 
-  const message = {
-    token,
-    notification: {
-      title,
-      body,
-      icon: "/icons/notification-icon.png"
-    },
-    android: {
-      priority: "high"
-    },
-    apns: {
-      payload: {
-        aps: {
-          sound: "default"
+  try {
+    const message = {
+      token,
+      notification: {
+        title,
+        body,
+        icon: "/icons/notification-icon.png"
+      },
+      android: { priority: "high" },
+      apns: {
+        payload: {
+          aps: { sound: "default" }
         }
       }
-    }
-  };
+    };
 
-  try {
     const response = await admin.messaging().send(message);
     console.log("Successfully sent message:", response);
     res.status(200).json({ success: true, response });
@@ -48,3 +51,4 @@ export default async function handler(req, res) {
     res.status(500).json({ success: false, error: err.message });
   }
 }
+
