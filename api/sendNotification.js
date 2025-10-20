@@ -1,14 +1,7 @@
-// Use environment variable for security
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-// import serviceAccount from "service-account.json"; // adjust path if needed (use local file)
-
 import admin from "firebase-admin";
 
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
-  });
-}
+// Parse the JSON string from environment variable
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 
 // Initialize Firebase Admin SDK once
 if (!admin.apps.length) {
@@ -51,4 +44,3 @@ export default async function handler(req, res) {
     res.status(500).json({ success: false, error: err.message });
   }
 }
-
