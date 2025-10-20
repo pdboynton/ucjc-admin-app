@@ -6,6 +6,6 @@
     "start": "echo 'Static frontend app'"
   },
   "dependencies": {
-    "firebase-admin": "^11.10.1",
+    "firebase-admin": "^11.10.1"
   }
 }
