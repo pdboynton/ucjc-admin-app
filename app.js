@@ -1,3 +1,4 @@
+// Register Firebase messaging service worker
 navigator.serviceWorker.register("firebase-messaging-sw.js");
 
 if ("serviceWorker" in navigator) {
@@ -13,24 +14,25 @@ if ("serviceWorker" in navigator) {
 let access_token = null;
 let fcmToken = null;
 let numButtonClicks = 0;
+
 function buttonClicked() {
-    numButtonClicks = numButtonClicks + 1;
-    document.getElementById("mainDiv").textContent =
-        "Button Clicked times: " + numButtonClicks;
+  numButtonClicks++;
+  document.getElementById("mainDiv").textContent = "Button Clicked times: " + numButtonClicks;
 }
 
+// Theme toggle
 document.getElementById("theme-toggle").addEventListener("change", (e) => {
   const mode = e.target.checked ? "dark" : "light";
   document.documentElement.setAttribute("data-theme", mode);
 });
 
+// Notification toggle
 document.getElementById("notifications-toggle").addEventListener("change", (e) => {
   const enabled = e.target.checked;
   console.log("Notifications", enabled ? "enabled" : "disabled");
-  // You can trigger permission or backend logic here
 });
 
-
+// Google Calendar setup
 const CLIENT_ID = "698752970791-4u301ft12476gefotj313sb1t3ovn5p1.apps.googleusercontent.com";
 const API_KEY = "AIzaSyDV34G66jQ58MBPBJq3MfmhZF8mOdifVqg";
 const CALENDAR_ID = "c_ab7c60e65ae19abaea378c282b6770147ad855d3c58c442c8fa611b7e5be2934@group.calendar.google.com";
@@ -43,20 +45,18 @@ window.onload = () => {
 
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID,
-    scope: "https://www.googleapis.com/auth/calendar",
+    scope: SCOPES,
     callback: (tokenResponse) => {
       access_token = tokenResponse.access_token;
-      document.getElementById("authorize-btn").style.display = "none"; // Hide button
+      document.getElementById("authorize-btn").style.display = "none";
       gapiLoadCalendar();
     }
   });
-  
-  // Hide button if token already exists
+
   if (access_token) {
     document.getElementById("authorize-btn").style.display = "none";
   }
-  
-  // Attach navigation listeners after DOM is ready
+
   document.querySelectorAll(".nav-bar button").forEach(btn => {
     btn.addEventListener("click", () => {
       const target = btn.getAttribute("data-target");
@@ -69,23 +69,19 @@ window.onload = () => {
   });
 };
 
-
 document.getElementById("authorize-btn").addEventListener("click", () => {
   tokenClient.requestAccessToken();
 });
 
 function gapiLoadCalendar() {
   gapi.load("client", async () => {
-    // Only initialize with access token, not API key
     await gapi.client.init({});
-
-    gapi.client.setToken({ access_token }); // Set token explicitly
+    gapi.client.setToken({ access_token });
     await gapi.client.load("calendar", "v3");
     console.log("Google Calendar API loaded");
     loadEvents();
   });
 }
-
 
 document.getElementById("event-form").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -99,7 +95,6 @@ document.getElementById("event-form").addEventListener("submit", async (e) => {
     end: { dateTime: new Date(document.getElementById("event-end").value).toISOString() }
   };
 
-  // Set access token manually
   gapi.client.setToken({ access_token });
 
   try {
@@ -116,16 +111,17 @@ document.getElementById("event-form").addEventListener("submit", async (e) => {
         resource: event
       });
       showToast("Event created!");
-      await sendPushNotification(fcmToken);
+
+      if (fcmToken) {
+        console.log("Sending push to token:", fcmToken);
+        await sendPushNotification(fcmToken);
+      } else {
+        console.warn("FCM token not available. Notification skipped.");
+      }
     }
 
-    // Clear form fields
-    document.getElementById("event-id").value = "";
-    document.getElementById("event-title").value = "";
-    document.getElementById("event-description").value = "";
-    document.getElementById("event-location").value = "";
-    document.getElementById("event-start").value = "";
-    document.getElementById("event-end").value = "";
+    ["event-id", "event-title", "event-description", "event-location", "event-start", "event-end"]
+      .forEach(id => document.getElementById(id).value = "");
 
     loadEvents();
   } catch (err) {
@@ -134,10 +130,7 @@ document.getElementById("event-form").addEventListener("submit", async (e) => {
   }
 });
 
-
-document.getElementById("filter-select").addEventListener("change", () => {
-  loadEvents();
-});
+document.getElementById("filter-select").addEventListener("change", loadEvents);
 
 async function loadEvents() {
   const now = new Date().toISOString();
@@ -182,11 +175,9 @@ function editEvent(id) {
     document.getElementById("event-start").value = ev.start.dateTime?.slice(0,16) || "";
     document.getElementById("event-end").value = ev.end.dateTime?.slice(0,16) || "";
 
-    // Switch to Event Form section
     document.querySelectorAll("section").forEach(sec => sec.classList.remove("active"));
     document.getElementById("event-form-section").classList.add("active");
 
-    // Highlight the Event Form nav button
     document.querySelectorAll(".nav-bar button").forEach(b => b.classList.remove("active"));
     document.querySelector('[data-target="event-form-section"]').classList.add("active");
   });
@@ -202,19 +193,6 @@ function deleteEvent(id) {
   }
 }
 window.deleteEvent = deleteEvent;
-
-document.querySelectorAll(".nav-bar button").forEach(btn => {
-  btn.addEventListener("click", () => {
-    const target = btn.getAttribute("data-target");
-    document.querySelectorAll("section").forEach(sec => sec.classList.remove("active"));
-    document.getElementById(target)?.classList.add("active");
-
-    document.querySelectorAll(".nav-bar button").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-  });
-});
-
-// Firebase Push Notification (same as before)fi
 
 // Firebase Setup
 function initFirebase() {
@@ -238,6 +216,7 @@ function initFirebase() {
           vapidKey: "BBrSRxtM6M6j_FQoWdGPpjf2QodXhGyevf-5ng_MqXhdHV6OJQVcQful0X1wKWYxUpt3Gc_6IN-sfyDTbHGXGO8",
           serviceWorkerRegistration: reg
         }).then(token => {
+          fcmToken = token; // ✅ Assign globally
           console.log("FCM Token:", token);
         }).catch(err => console.error("FCM token error:", err));
       });
@@ -246,13 +225,15 @@ function initFirebase() {
 }
 
 async function sendPushNotification(token) {
+  if (!token || typeof token !== "string" || token.trim() === "") {
+    console.warn("FCM token is missing or invalid. Skipping push.");
+    return;
+  }
+
   const payload = {
-    to: token,
-    notification: {
-      title: "UCJC Update",
-      body: "New event or update posted!",
-      icon: "/icons/notification-icon.png"
-    }
+    token,
+    title: "UCJC Update",
+    body: "New event or update posted!"
   };
 
   try {
@@ -263,28 +244,46 @@ async function sendPushNotification(token) {
     });
 
     if (res.ok) {
-      console.log("Notification sent!");
+      console.log("Notification sent successfully.");
     } else {
-      console.error("FCM error:", res.statusText);
+      const errorText = await res.text();
+      console.error("FCM error:", res.status, errorText);
     }
   } catch (err) {
     console.error("Fetch error:", err);
   }
 }
 
-
 document.getElementById("manual-notify-form").addEventListener("submit", async (e) => {
   e.preventDefault();
+
   const title = document.getElementById("notify-title").value;
   const body = document.getElementById("notify-body").value;
 
-  await fetch("/api/sendNotification", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ token: fcmToken, title, body })
-  });
+  if (!fcmToken || !title || !body) {
+    console.warn("Missing token, title, or body. Notification not sent.");
+    showToast("Missing required fields.");
+    return;
+  }
 
-  showToast("Manual notification sent!");
+  try {
+    const res = await fetch("/api/sendNotification", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: fcmToken, title, body })
+    });
+
+    if (res.ok) {
+      showToast("Manual notification sent!");
+    } else {
+      const errorText = await res.text();
+      console.error("Manual FCM error:", res.status, errorText);
+      showToast("Notification failed.");
+    }
+  } catch (err) {
+    console.error("Manual fetch error:", err);
+    showToast("Notification error.");
+  }
 });
 
 function showToast(message) {
@@ -297,4 +296,3 @@ function showToast(message) {
     toast.remove();
   }, 3000);
 }
-
