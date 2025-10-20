@@ -1,6 +1,6 @@
 {
   "name": "UCJC Admin App",
-  "short_name": "UCJC",
+  "short_name": "UCJC Admin",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

@@ -1,11 +1,24 @@
 navigator.serviceWorker.register("firebase-messaging-sw.js");
 let access_token = null;
+let fcmToken = null;
 let numButtonClicks = 0;
 function buttonClicked() {
     numButtonClicks = numButtonClicks + 1;
     document.getElementById("mainDiv").textContent =
         "Button Clicked times: " + numButtonClicks;
 }
+
+document.getElementById("theme-toggle").addEventListener("change", (e) => {
+  const mode = e.target.checked ? "dark" : "light";
+  document.documentElement.setAttribute("data-theme", mode);
+});
+
+document.getElementById("notifications-toggle").addEventListener("change", (e) => {
+  const enabled = e.target.checked;
+  console.log("Notifications", enabled ? "enabled" : "disabled");
+  // You can trigger permission or backend logic here
+});
+
 
 const CLIENT_ID = "698752970791-4u301ft12476gefotj313sb1t3ovn5p1.apps.googleusercontent.com";
 const API_KEY = "AIzaSyDV34G66jQ58MBPBJq3MfmhZF8mOdifVqg";
@@ -15,6 +28,8 @@ const SCOPES = "https://www.googleapis.com/auth/calendar";
 let tokenClient;
 
 window.onload = () => {
+  initFirebase();
+
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID,
     scope: "https://www.googleapis.com/auth/calendar",
@@ -23,7 +38,20 @@ window.onload = () => {
       gapiLoadCalendar();
     }
   });
+
+  // Attach navigation listeners after DOM is ready
+  document.querySelectorAll(".nav-bar button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const target = btn.getAttribute("data-target");
+      document.querySelectorAll("section").forEach(sec => sec.classList.remove("active"));
+      document.getElementById(target)?.classList.add("active");
+
+      document.querySelectorAll(".nav-bar button").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+    });
+  });
 };
+
 
 document.getElementById("authorize-btn").addEventListener("click", () => {
   tokenClient.requestAccessToken();
@@ -71,6 +99,7 @@ document.getElementById("event-form").addEventListener("submit", async (e) => {
         resource: event
       });
       alert("Event created!");
+      await sendPushNotification(fcmToken);
     }
 
     loadEvents();
@@ -189,7 +218,7 @@ function initFirebase() {
   });
 }
 
-function sendPushNotification(token) {
+async function sendPushNotification(token) {
   const payload = {
     to: token,
     notification: {
@@ -203,23 +232,19 @@ function sendPushNotification(token) {
     const res = await fetch("/api/sendNotification", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        token: fcmToken,
-        title: "UCJC Event Updated",
-        body: `Event "${event.summary}" was ${id ? "updated" : "created"}`
-      })
+      body: JSON.stringify(payload)
     });
 
     if (res.ok) {
-      alert("Notification sent!");
+      console.log("Notification sent!");
     } else {
       console.error("FCM error:", res.statusText);
     }
   } catch (err) {
     console.error("Fetch error:", err);
   }
-
 }
+
 
 document.getElementById("manual-notify-form").addEventListener("submit", async (e) => {
   e.preventDefault();

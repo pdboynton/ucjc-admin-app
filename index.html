@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -23,6 +23,20 @@
 
   <section id="dashboard" class="active">
     <h2>Upcoming Events</h2>
+
+    <div id="filter-container">
+      <label for="filter-select">Filter by Ministry:</label>
+      <select id="filter-select">
+          <option value="All">All</option>
+          <option value="#Youth">Youth</option>
+          <option value="#WomenOfRoyalty">Women of Royalty</option>
+          <option value="#ManCave">Man Cave</option>
+          <option value="#General">General</option>
+          <option value="#YoungAdult">Young Adults</option>
+          <option value="#Rehearsal">Rehearsals</option>
+      </select>
+    </div>
+
     <ul id="event-list"></ul>
   </section>
 
@@ -39,19 +53,6 @@
     </form>
   </section>
 
-  <section id="filter-panel">
-    <h2>Filter Events by Ministry</h2>
-    <select id="filter-select">
-      <option value="All">All</option>
-      <option value="#Youth">Youth</option>
-      <option value="#WomenOfRoyalty">Women of Royalty</option>
-      <option value="#ManCave">Man Cave</option>
-      <option value="#General">General</option>
-      <option value="#YoungAdult">Young Adults</option>
-      <option value="#Rehearsal">Rehearsals</option>
-    </select>
-  </section>
-
   <section id="manual-notification">
     <h2>Send Manual Notification</h2>
     <form id="manual-notify-form">
@@ -61,15 +62,37 @@
     </form>
   </section>
 
+    <section id="settings">
+      <h2>Settings</h2>
+
+      <div class="settings-group">
+        <label class="switch-label" for="theme-toggle">Dark Mode</label>
+        <label class="switch">
+          <input type="checkbox" id="theme-toggle">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="settings-group">
+        <label class="switch-label" for="notifications-toggle">Enable Notifications</label>
+        <label class="switch">
+          <input type="checkbox" id="notifications-toggle">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </section>
+
   <!-- Bottom Navigation -->
   <nav class="nav-bar">
     <button data-target="dashboard"><i class="fa-solid fa-house"></i><span>Dashboard</span></button>
     <button data-target="event-form-section"><i class="fa-solid fa-calendar-plus"></i><span>Event Form</span></button>
-    <button data-target="filter-panel"><i class="fa-solid fa-filter"></i><span>Filter</span></button>
     <button data-target="manual-notification"><i class="fa-solid fa-bell"></i><span>Manual Notify</span></button>
+    <button data-target="settings"><i class="fa-solid fa-gear"></i><span>Settings</span></button>
   </nav>
 
   <script type="module" src="app.js"></script>
+  <div id="toast-container"></div>
+
 </body>
 
 </html>

@@ -1,13 +1,24 @@
 navigator.serviceWorker.register("firebase-messaging-sw.js");
 let access_token = null;
 let fcmToken = null;
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 let numButtonClicks = 0;
 function buttonClicked() {
     numButtonClicks = numButtonClicks + 1;
     document.getElementById("mainDiv").textContent =
         "Button Clicked times: " + numButtonClicks;
 }
+
+document.getElementById("theme-toggle").addEventListener("change", (e) => {
+  const mode = e.target.checked ? "dark" : "light";
+  document.documentElement.setAttribute("data-theme", mode);
+});
+
+document.getElementById("notifications-toggle").addEventListener("change", (e) => {
+  const enabled = e.target.checked;
+  console.log("Notifications", enabled ? "enabled" : "disabled");
+  // You can trigger permission or backend logic here
+});
+
 
 const CLIENT_ID = "698752970791-4u301ft12476gefotj313sb1t3ovn5p1.apps.googleusercontent.com";
 const API_KEY = "AIzaSyDV34G66jQ58MBPBJq3MfmhZF8mOdifVqg";
@@ -17,16 +28,36 @@ const SCOPES = "https://www.googleapis.com/auth/calendar";
 let tokenClient;
 
 window.onload = () => {
-  initFirebase(); // initialize Firebase messaging
+  initFirebase();
+
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID,
     scope: "https://www.googleapis.com/auth/calendar",
     callback: (tokenResponse) => {
       access_token = tokenResponse.access_token;
+      document.getElementById("authorize-btn").style.display = "none"; // Hide button
       gapiLoadCalendar();
     }
   });
+  
+  // Hide button if token already exists
+  if (access_token) {
+    document.getElementById("authorize-btn").style.display = "none";
+  }
+  
+  // Attach navigation listeners after DOM is ready
+  document.querySelectorAll(".nav-bar button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const target = btn.getAttribute("data-target");
+      document.querySelectorAll("section").forEach(sec => sec.classList.remove("active"));
+      document.getElementById(target)?.classList.add("active");
+
+      document.querySelectorAll(".nav-bar button").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+    });
+  });
 };
+
 
 document.getElementById("authorize-btn").addEventListener("click", () => {
   tokenClient.requestAccessToken();
@@ -67,19 +98,28 @@ document.getElementById("event-form").addEventListener("submit", async (e) => {
         eventId: id,
         resource: event
       });
-      alert("Event updated!");
+      showToast("Event updated!");
     } else {
       await gapi.client.calendar.events.insert({
         calendarId: CALENDAR_ID,
         resource: event
       });
-      alert("Event created!");
+      showToast("Event created!");
+      await sendPushNotification(fcmToken);
     }
+
+    // Clear form fields
+    document.getElementById("event-id").value = "";
+    document.getElementById("event-title").value = "";
+    document.getElementById("event-description").value = "";
+    document.getElementById("event-location").value = "";
+    document.getElementById("event-start").value = "";
+    document.getElementById("event-end").value = "";
 
     loadEvents();
   } catch (err) {
     console.error("Calendar API error:", err);
-    alert("Failed to submit event. Check authorization and scopes.");
+    showToast("Failed to submit event. Check authorization and scopes.");
   }
 });
 
@@ -140,15 +180,17 @@ function editEvent(id) {
     document.querySelector('[data-target="event-form-section"]').classList.add("active");
   });
 }
+window.editEvent = editEvent;
 
 function deleteEvent(id) {
   if (confirm("Delete this event?")) {
     gapi.client.calendar.events.delete({ calendarId: CALENDAR_ID, eventId: id }).then(() => {
-      alert("Event deleted.");
+      showToast("Event deleted.");
       loadEvents();
     });
   }
 }
+window.deleteEvent = deleteEvent;
 
 document.querySelectorAll(".nav-bar button").forEach(btn => {
   btn.addEventListener("click", () => {
@@ -203,31 +245,22 @@ async function sendPushNotification(token) {
   };
 
   try {
-    if (id) {
-      await gapi.client.calendar.events.update({
-        calendarId: CALENDAR_ID,
-        eventId: id,
-        resource: event
-      });
-      alert("Event updated!");
+    const res = await fetch("/api/sendNotification", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (res.ok) {
+      console.log("Notification sent!");
     } else {
-      await gapi.client.calendar.events.insert({
-        calendarId: CALENDAR_ID,
-        resource: event
-      });
-      alert("Event created!");
+      console.error("FCM error:", res.statusText);
     }
-
-    // Send push notification
-    await sendPushNotification(fcmToken);
-
-    loadEvents();
   } catch (err) {
-    console.error("Calendar API error:", err);
-    alert("Failed to submit event. Check authorization and scopes.");
+    console.error("Fetch error:", err);
   }
-
 }
+
 
 document.getElementById("manual-notify-form").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -240,5 +273,17 @@ document.getElementById("manual-notify-form").addEventListener("submit", async (
     body: JSON.stringify({ token: fcmToken, title, body })
   });
 
-  alert("Manual notification sent!");
+  showToast("Manual notification sent!");
 });
+
+function showToast(message) {
+  const toast = document.createElement("div");
+  toast.className = "toast";
+  toast.textContent = message;
+  document.getElementById("toast-container").appendChild(toast);
+
+  setTimeout(() => {
+    toast.remove();
+  }, 3000);
+}
+

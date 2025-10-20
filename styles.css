@@ -1,18 +1,34 @@
-body {
-  font-family: Arial, sans-serif;
-  padding: 5rem 2rem;
-  background: #f5f7fa;
-  color: #333;
+:root {
+  --bg-color: #f5f7fa;
+  --text-color: #222222;
+  --accent-color: #3a6ea5; /*007bff*/
+  --card-bg: #ffffff;
+  --border-color: #dddddd;
 }
 
-h1 {
-  color: #3a6ea5;
+[data-theme="dark"] {
+  --bg-color: #1C1F26/*#121212*/;
+  --text-color: #EAEAEA;
+  --accent-color: #4F8CC9 /*66b2ff*/;
+  --card-bg: #2A2E38 /*1e1e1e*/;
+  --border-color: #3C4049 /*333333*/;
+}
+
+body {
+  font-family: "Segoe UI", sans-serif;
+  padding: 5rem 2rem;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}
+
+h1, h2 {
+  color: var(--accent-color);
 }
 
 form {
   margin-top: 1rem;
   padding: 1rem;
-  background: white;
+  background: var(--bg-color);
   border-radius: 6px;
   box-shadow: 0 2px 6px rgba(0,0,0,0.1);
 }
@@ -26,14 +42,23 @@ input, textarea, button {
 }
 
 section {
-  margin-top: 2rem;
+  padding: 1em;
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+  margin-bottom: 1em;
+  border-radius: 8px;
+}
+
+#event-list {
+  list-style-type: none;
+  padding-left: 0;
 }
 
 #event-list li {
-  background: #fff;
+  background: var(--bg-color);
   padding: 1rem;
-  margin-bottom: 0.5rem;
-  border-left: 4px solid #3a6ea5;
+  margin-bottom: 1rem;
+  border-left: 4px solid var(--accent-color);
   border-radius: 6px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
@@ -58,8 +83,8 @@ section.active {
   width: 100%;
   display: flex;
   justify-content: space-around;
-  background: #ffffff;
-  border-top: 1px solid #ccc;
+  background-color: var(--card-bg);
+  border-top: 1px solid var(--border-color);
   padding: 0.5rem 0;
   z-index: 1000;
 }
@@ -68,7 +93,7 @@ section.active {
   background: none;
   border: none;
   font-size: 1.2rem;
-  color: #3a6ea5;
+  color: var(--text-color);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -79,7 +104,7 @@ section.active {
 }
 
 .nav-bar button.active {
-  color: #E3B23C; /* highlight color */
+  color: var(--accent-color);
   font-weight: bold;
 }
 
@@ -94,11 +119,7 @@ section.active {
   left: 0;
   width: stretch;
   z-index: 100; /* ensures it stays above other elements */
-  background-color: var(--bg-light)
-}
-
-.dark .home-header {
-  background-color: var(--bg-dark)
+  background-color: var(--bg-color);
 }
 
 .ucjc-logo {
@@ -121,4 +142,93 @@ section.active {
   font-size: 1rem;
   margin: 0.3rem 0 0;
   color: var(--accent-light);
+}
+
+#filter-container {
+  margin-bottom: 1em;
+}
+
+.settings-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 1em 0;
+  padding: 0.5em 1em;
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.switch-label {
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 24px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--border-color);
+  transition: 0.4s;
+  border-radius: 24px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: var(--text-color);
+  transition: 0.4s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: var(--accent-color);
+}
+
+input:checked + .slider:before {
+  transform: translateX(26px);
+}
+
+#toast-container {
+  position: fixed;
+  bottom: 1em;
+  right: 1em;
+  z-index: 9999;
+}
+
+.toast {
+  background-color: var(--accent-color);
+  color: #fff;
+  padding: 0.75em 1.2em;
+  margin-top: 0.5em;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  animation: fadeInOut 3s ease forwards;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateY(20px); }
+  10% { opacity: 1; transform: translateY(0); }
+  90% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-20px); }
 }
