@@ -4,8 +4,8 @@
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#003366",
-  "orientation": "portrait",
+  "theme_color": "#007bff",
+  "description": "Real-time ministry dashboard with calendar, notifications, and event management.",
   "icons": [
     {
       "src": "/icons/icon-192.png",

@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#007bff" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>UCJC Admin App</title>
@@ -84,7 +88,7 @@
 
   <!-- Bottom Navigation -->
   <nav class="nav-bar">
-    <button data-target="dashboard"><i class="fa-solid fa-house"></i><span>Dashboard</span></button>
+    <button data-target="dashboard" class="active"><i class="fa-solid fa-house"></i><span>Dashboard</span></button>
     <button data-target="event-form-section"><i class="fa-solid fa-calendar-plus"></i><span>Event Form</span></button>
     <button data-target="manual-notification"><i class="fa-solid fa-bell"></i><span>Manual Notify</span></button>
     <button data-target="settings"><i class="fa-solid fa-gear"></i><span>Settings</span></button>
