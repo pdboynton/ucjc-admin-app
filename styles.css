@@ -33,7 +33,15 @@ form {
   box-shadow: 0 2px 6px rgba(0,0,0,0.1);
 }
 
-input, textarea, button {
+input, textarea {
+  display: block;
+  margin: 0.5rem 0;
+  padding: 0.5rem;
+  width: 94%;
+  max-width: 400px;
+} 
+
+button {
   display: block;
   margin: 0.5rem 0;
   padding: 0.5rem;
@@ -127,6 +135,7 @@ section.active {
   object-fit: cover;
 }
 
+/*Home Header*/
 .home-title h1 {
   font-size: 1.2rem;
   margin: 0;
@@ -211,7 +220,7 @@ input:checked + .slider:before {
 
 #toast-container {
   position: fixed;
-  bottom: 1em;
+  top: 1em;
   right: 1em;
   z-index: 9999;
 }
