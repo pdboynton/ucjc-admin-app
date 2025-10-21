@@ -1,14 +1,24 @@
-import admin from "firebase-admin";
-
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
-
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
-  });
-}
-
 export default async function handler(req, res) {
+  console.log("Incoming request:", req.method);
+
+  let admin;
+  try {
+    admin = await import("firebase-admin");
+
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+
+    if (!admin.getApps().length) {
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount)
+      });
+    }
+
+    console.log("Firebase Admin initialized");
+  } catch (err) {
+    console.error("Firebase Admin SDK init failed:", err);
+    return res.status(500).json({ success: false, error: "Firebase Admin SDK init failed" });
+  }
+
   if (req.method !== "POST") {
     return res.status(405).end();
   }
@@ -36,8 +46,10 @@ export default async function handler(req, res) {
 
   try {
     const response = await admin.messaging().send(message);
+    console.log("Notification sent:", response);
     res.status(200).json({ success: true, response });
   } catch (err) {
+    console.error("FCM error:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 }
