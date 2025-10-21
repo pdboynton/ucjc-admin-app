@@ -1,26 +1,30 @@
-import admin from "firebase-admin";
-import path from "path";
-import fs from "fs";
-
 export default async function handler(req, res) {
   console.log("Incoming request:", req.method, req.body);
   console.log("Server time (UTC):", new Date().toISOString());
 
+  let admin;
   try {
+    // Dynamically import firebase-admin to avoid early crash
+    admin = await import("firebase-admin");
+
+    const fs = await import("fs");
+    const path = await import("path");
+
     const serviceAccountPath = path.join(process.cwd(), "config/service-account.json");
-    const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, "utf8"));
+    const raw = fs.readFileSync(serviceAccountPath, "utf8");
+    const serviceAccount = JSON.parse(raw);
 
     console.log("Loaded service account email:", serviceAccount.client_email);
     console.log("Loaded service account project ID:", serviceAccount.project_id);
     console.log("Loaded service account key ID:", serviceAccount.private_key_id);
 
-    if (!admin.apps.length) {
+    if (!admin.getApps().length) {
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount)
       });
     }
   } catch (initError) {
-    console.error("Firebase Admin initialization failed:", initError);
+    console.error("Firebase Admin SDK init failed:", initError);
     return res.status(500).json({ success: false, error: "Firebase Admin SDK init failed" });
   }
 
