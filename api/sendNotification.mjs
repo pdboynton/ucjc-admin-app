@@ -3,11 +3,12 @@ export default async function handler(req, res) {
 
   let admin;
   try {
-    admin = await import("firebase-admin");
+    const { default: importedAdmin } = await import("firebase-admin");
+    admin = importedAdmin;
 
     const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
 
-    if (!admin.getApps().length) {
+    if (!admin.apps.length) {
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount)
       });
