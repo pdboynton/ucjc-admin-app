@@ -6,6 +6,11 @@ import fs from "fs";
 const serviceAccountPath = path.join(process.cwd(), "config/service-account.json");
 const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, "utf8"));
 
+// ✅ Log key identity
+console.log("Loaded service account email:", serviceAccount.client_email);
+console.log("Loaded service account project ID:", serviceAccount.project_id);
+console.log("Loaded service account key ID:", serviceAccount.private_key_id);
+
 // Initialize Firebase Admin SDK once
 if (!admin.apps.length) {
   admin.initializeApp({
@@ -15,6 +20,9 @@ if (!admin.apps.length) {
 
 export default async function handler(req, res) {
   console.log("Incoming request:", req.method, req.body);
+
+  // ✅ Log server time
+  console.log("Server time (UTC):", new Date().toISOString());
 
   if (req.method !== "POST") {
     console.warn("Rejected non-POST request");
