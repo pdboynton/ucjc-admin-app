@@ -1,0 +1,298 @@
+// Register Firebase messaging service worker
+navigator.serviceWorker.register("firebase-messaging-sw.js");
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").then(reg => {
+      console.log("Service Worker registered:", reg);
+    }).catch(err => {
+      console.error("Service Worker registration failed:", err);
+    });
+  });
+}
+
+let access_token = null;
+let fcmToken = null;
+let numButtonClicks = 0;
+
+function buttonClicked() {
+  numButtonClicks++;
+  document.getElementById("mainDiv").textContent = "Button Clicked times: " + numButtonClicks;
+}
+
+// Theme toggle
+document.getElementById("theme-toggle").addEventListener("change", (e) => {
+  const mode = e.target.checked ? "dark" : "light";
+  document.documentElement.setAttribute("data-theme", mode);
+});
+
+// Notification toggle
+document.getElementById("notifications-toggle").addEventListener("change", (e) => {
+  const enabled = e.target.checked;
+  console.log("Notifications", enabled ? "enabled" : "disabled");
+});
+
+// Google Calendar setup
+const CLIENT_ID = "698752970791-4u301ft12476gefotj313sb1t3ovn5p1.apps.googleusercontent.com";
+const API_KEY = "AIzaSyDV34G66jQ58MBPBJq3MfmhZF8mOdifVqg";
+const CALENDAR_ID = "c_ab7c60e65ae19abaea378c282b6770147ad855d3c58c442c8fa611b7e5be2934@group.calendar.google.com";
+const SCOPES = "https://www.googleapis.com/auth/calendar";
+
+let tokenClient;
+
+window.onload = () => {
+  initFirebase();
+
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: (tokenResponse) => {
+      access_token = tokenResponse.access_token;
+      document.getElementById("authorize-btn").style.display = "none";
+      gapiLoadCalendar();
+    }
+  });
+
+  if (access_token) {
+    document.getElementById("authorize-btn").style.display = "none";
+  }
+
+  document.querySelectorAll(".nav-bar button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const target = btn.getAttribute("data-target");
+      document.querySelectorAll("section").forEach(sec => sec.classList.remove("active"));
+      document.getElementById(target)?.classList.add("active");
+
+      document.querySelectorAll(".nav-bar button").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+    });
+  });
+};
+
+document.getElementById("authorize-btn").addEventListener("click", () => {
+  tokenClient.requestAccessToken();
+});
+
+function gapiLoadCalendar() {
+  gapi.load("client", async () => {
+    await gapi.client.init({});
+    gapi.client.setToken({ access_token });
+    await gapi.client.load("calendar", "v3");
+    console.log("Google Calendar API loaded");
+    loadEvents();
+  });
+}
+
+document.getElementById("event-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const id = document.getElementById("event-id").value;
+  const event = {
+    summary: document.getElementById("event-title").value,
+    description: document.getElementById("event-description").value,
+    location: document.getElementById("event-location").value,
+    start: { dateTime: new Date(document.getElementById("event-start").value).toISOString() },
+    end: { dateTime: new Date(document.getElementById("event-end").value).toISOString() }
+  };
+
+  gapi.client.setToken({ access_token });
+
+  try {
+    if (id) {
+      await gapi.client.calendar.events.update({
+        calendarId: CALENDAR_ID,
+        eventId: id,
+        resource: event
+      });
+      showToast("Event updated!");
+    } else {
+      await gapi.client.calendar.events.insert({
+        calendarId: CALENDAR_ID,
+        resource: event
+      });
+      showToast("Event created!");
+
+      if (fcmToken) {
+        console.log("Sending push to token:", fcmToken);
+        await sendPushNotification(fcmToken);
+      } else {
+        console.warn("FCM token not available. Notification skipped.");
+      }
+    }
+
+    ["event-id", "event-title", "event-description", "event-location", "event-start", "event-end"]
+      .forEach(id => document.getElementById(id).value = "");
+
+    loadEvents();
+  } catch (err) {
+    console.error("Calendar API error:", err);
+    showToast("Failed to submit event. Check authorization and scopes.");
+  }
+});
+
+document.getElementById("filter-select").addEventListener("change", loadEvents);
+
+async function loadEvents() {
+  const now = new Date().toISOString();
+  const res = await gapi.client.calendar.events.list({
+    calendarId: CALENDAR_ID,
+    timeMin: now,
+    singleEvents: true,
+    orderBy: "startTime"
+  });
+
+  const selectedTag = document.getElementById("filter-select").value;
+  const events = res.result.items || [];
+  const filtered = selectedTag === "All" ? events
+    : events.filter(ev => (ev.description || "").includes(selectedTag));
+
+  const list = document.getElementById("event-list");
+  list.innerHTML = "";
+
+  filtered.forEach(ev => {
+    const start = new Date(ev.start.dateTime || ev.start.date).toLocaleString();
+    const li = document.createElement("li");
+    li.innerHTML = `
+      <strong>${ev.summary}</strong><br/>
+      ${start}<br/>
+      ${ev.location || ""}<br/>
+      <div class="event-actions">
+        <button onclick="editEvent('${ev.id}')">Edit</button>
+        <button onclick="deleteEvent('${ev.id}')">Delete</button>
+      </div>
+    `;
+    list.appendChild(li);
+  });
+}
+
+function editEvent(id) {
+  gapi.client.calendar.events.get({ calendarId: CALENDAR_ID, eventId: id }).then(res => {
+    const ev = res.result;
+    document.getElementById("event-id").value = ev.id;
+    document.getElementById("event-title").value = ev.summary;
+    document.getElementById("event-description").value = ev.description || "";
+    document.getElementById("event-location").value = ev.location || "";
+    document.getElementById("event-start").value = ev.start.dateTime?.slice(0,16) || "";
+    document.getElementById("event-end").value = ev.end.dateTime?.slice(0,16) || "";
+
+    document.querySelectorAll("section").forEach(sec => sec.classList.remove("active"));
+    document.getElementById("event-form-section").classList.add("active");
+
+    document.querySelectorAll(".nav-bar button").forEach(b => b.classList.remove("active"));
+    document.querySelector('[data-target="event-form-section"]').classList.add("active");
+  });
+}
+window.editEvent = editEvent;
+
+function deleteEvent(id) {
+  if (confirm("Delete this event?")) {
+    gapi.client.calendar.events.delete({ calendarId: CALENDAR_ID, eventId: id }).then(() => {
+      showToast("Event deleted.");
+      loadEvents();
+    });
+  }
+}
+window.deleteEvent = deleteEvent;
+
+// Firebase Setup
+function initFirebase() {
+  const config = {
+    apiKey: "AIzaSyDV34G66jQ58MBPBJq3MfmhZF8mOdifVqg",
+    authDomain: "ucjcconvocation.firebaseapp.com",
+    projectId: "ucjcconvocation",
+    storageBucket: "ucjcconvocation.firebasestorage.app",
+    messagingSenderId: "698752970791",
+    appId: "1:698752970791:web:0ae1b0094858609579de02",
+    measurementId: "G-0M5WBTR83N"
+  };
+
+  firebase.initializeApp(config);
+  const messaging = firebase.messaging();
+
+  Notification.requestPermission().then(permission => {
+    if (permission === "granted") {
+      navigator.serviceWorker.ready.then(reg => {
+        messaging.getToken({
+          vapidKey: "BBrSRxtM6M6j_FQoWdGPpjf2QodXhGyevf-5ng_MqXhdHV6OJQVcQful0X1wKWYxUpt3Gc_6IN-sfyDTbHGXGO8",
+          serviceWorkerRegistration: reg
+        }).then(token => {
+          fcmToken = token; // ✅ Assign globally
+          console.log("FCM Token:", token);
+        }).catch(err => console.error("FCM token error:", err));
+      });
+    }
+  });
+}
+
+async function sendPushNotification(token) {
+  if (!token || typeof token !== "string" || token.trim() === "") {
+    console.warn("FCM token is missing or invalid. Skipping push.");
+    return;
+  }
+
+  const payload = {
+    token,
+    title: "UCJC Update",
+    body: "New event or update posted!"
+  };
+
+  try {
+    const res = await fetch("/api/sendNotification", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (res.ok) {
+      console.log("Notification sent successfully.");
+    } else {
+      const errorText = await res.text();
+      console.error("FCM error:", res.status, errorText);
+    }
+  } catch (err) {
+    console.error("Fetch error:", err);
+  }
+}
+
+document.getElementById("manual-notify-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const title = document.getElementById("notify-title").value;
+  const body = document.getElementById("notify-body").value;
+
+  if (!fcmToken || !title || !body) {
+    console.warn("Missing token, title, or body. Notification not sent.");
+    showToast("Missing required fields.");
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/sendNotification", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token: fcmToken, title, body })
+    });
+
+    if (res.ok) {
+      showToast("Manual notification sent!");
+    } else {
+      const errorText = await res.text();
+      console.error("Manual FCM error:", res.status, errorText);
+      showToast("Notification failed.");
+    }
+  } catch (err) {
+    console.error("Manual fetch error:", err);
+    showToast("Notification error.");
+  }
+});
+
+function showToast(message) {
+  const toast = document.createElement("div");
+  toast.className = "toast";
+  toast.textContent = message;
+  document.getElementById("toast-container").appendChild(toast);
+
+  setTimeout(() => {
+    toast.remove();
+  }, 3000);
+}
