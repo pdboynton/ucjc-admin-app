@@ -30,20 +30,20 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
-  const message = {
-    token,
-    notification: {
-      title,
-      body,
-      icon: "/icons/notification-icon.png"
-    },
-    android: { priority: "high" },
-    apns: {
-      payload: {
-        aps: { sound: "default" }
-      }
+const message = {
+  token,
+  notification: {
+    title,
+    body
+  },
+  android: { priority: "high" },
+  apns: {
+    payload: {
+      aps: { sound: "default" }
     }
-  };
+  }
+};
+
 
   try {
     const response = await admin.messaging().send(message);
