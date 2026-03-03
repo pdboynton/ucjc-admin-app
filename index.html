@@ -8,6 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="UCJC Admin"/>
   <title>UCJC Admin Console</title>
+  <link rel="manifest" href="admin-manifest.json"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Lato:wght@300;400;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
@@ -1037,8 +1038,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
-<!-- Google Identity Services (for Calendar OAuth) -->
-<script src="https://accounts.google.com/gsi/client" async></script>
 
 <script>
 (function () {
@@ -1315,31 +1314,39 @@
     }
   }
 
-  /* ══════════════════════════════════════════
+  /* ════════════════════════════════════════════
      GOOGLE CALENDAR OAUTH
-  ══════════════════════════════════════════ */
-  window.connectGoogleCalendar = function() {
-    // Use Google Identity Services token client
-    if (typeof google === 'undefined' || !google.accounts) {
-      toast('Google Identity Services not loaded. Check your internet connection.', 'error');
-      return;
-    }
-    const tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: GCAL_CLIENT_ID,
-      scope: 'https://www.googleapis.com/auth/calendar',
-      callback: (tokenResponse) => {
-        if (tokenResponse.error) {
-          toast('Google authorization failed: ' + tokenResponse.error, 'error');
-          return;
-        }
-        gcalAccessToken = tokenResponse.access_token;
-        $('oauth-dot').classList.add('connected');
-        $('oauth-bar-text').innerHTML = '<strong>Connected</strong> — Google Calendar authorized';
-        $('oauth-btn').textContent = 'Reconnect';
-        toast('Google Calendar connected!', 'success');
+     Uses Firebase GoogleAuthProvider so the
+     popup works from any origin/PWA context.
+  ════════════════════════════════════════════ */
+  window.connectGoogleCalendar = async function() {
+    try {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      provider.addScope('https://www.googleapis.com/auth/calendar');
+      provider.setCustomParameters({ prompt: 'select_account' });
+
+      const result = await auth.signInWithPopup(provider);
+      const credential = firebase.auth.GoogleAuthProvider.credentialFromResult(result);
+      gcalAccessToken = credential && credential.accessToken;
+
+      if (!gcalAccessToken) throw new Error('No access token returned.');
+
+      const pd = result.user && result.user.providerData;
+      const gpd = pd && pd.find(function(p){ return p.providerId === 'google.com'; });
+      const googleEmail = (gpd && gpd.email) || (result.user && result.user.email) || 'Google account';
+
+      $('oauth-dot').classList.add('connected');
+      $('oauth-bar-text').innerHTML = '<strong>Connected</strong> — ' + escHtml(googleEmail);
+      $('oauth-btn').textContent = 'Reconnect';
+      toast('Google Calendar connected!', 'success');
+    } catch (err) {
+      console.error('Google Calendar OAuth error:', err);
+      if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
+        toast('Authorization cancelled.', 'info');
+        return;
       }
-    });
-    tokenClient.requestAccessToken();
+      toast('Could not connect Google Calendar: ' + (err.message || err.code || 'Unknown error'), 'error');
+    }
   };
 
   /* ══════════════════════════════════════════
@@ -1943,7 +1950,7 @@
      PWA SERVICE WORKER
   ══════════════════════════════════════════ */
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    navigator.serviceWorker.register('./admin-sw.js').catch(() => {});
   }
 
 })();

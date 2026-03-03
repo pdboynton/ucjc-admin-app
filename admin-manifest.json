@@ -1,0 +1,50 @@
+{
+  "name": "UCJC Admin Console",
+  "short_name": "UCJC Admin",
+  "description": "Administrative console for UCJC Holy Convocation — manage events, moderation, directory, and notifications.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#060d1a",
+  "theme_color": "#0A1628",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Calendar",
+      "short_name": "Calendar",
+      "description": "Manage Google Calendar events",
+      "url": "./admin.html#calendar",
+      "icons": [{ "src": "logo.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Moderation",
+      "short_name": "Moderate",
+      "description": "Moderate chat and prayer requests",
+      "url": "./admin.html#moderation",
+      "icons": [{ "src": "logo.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Notifications",
+      "short_name": "Notify",
+      "description": "Send broadcast notifications",
+      "url": "./admin.html#notifications",
+      "icons": [{ "src": "logo.png", "sizes": "192x192" }]
+    }
+  ],
+  "prefer_related_applications": false
+}
