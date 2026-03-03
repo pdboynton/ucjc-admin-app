@@ -1,0 +1,1952 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <meta name="theme-color" content="#0A1628" id="meta-theme"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="UCJC Admin"/>
+  <title>UCJC Admin Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Lato:wght@300;400;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+
+  <style>
+    /* ══════════════════════════════════════════════
+       CSS VARIABLES
+    ══════════════════════════════════════════════ */
+    :root {
+      --bg-deep:      #060d1a;
+      --bg-mid:       #0d1f3a;
+      --bg-card:      #152740;
+      --bg-light:     #1a3052;
+      --gold:         #C9A84C;
+      --gold-light:   #E4C46A;
+      --gold-dim:     rgba(201,168,76,0.15);
+      --crimson:      #8B2635;
+      --crimson-dim:  rgba(139,38,53,0.15);
+      --green:        #2e7d4f;
+      --green-dim:    rgba(46,125,79,0.15);
+      --text-primary: #F0E8D8;
+      --text-muted:   #8FA3BF;
+      --text-dim:     #4a6280;
+      --border:       rgba(201,168,76,0.18);
+      --border-soft:  rgba(255,255,255,0.07);
+      --shadow:       0 8px 32px rgba(0,0,0,0.5);
+      --input-bg:     rgba(255,255,255,0.04);
+      --input-border: rgba(255,255,255,0.12);
+      --overlay-bg:   rgba(0,0,0,0.80);
+      --radius:       14px;
+      --radius-sm:    8px;
+      --font-display: 'Playfair Display', serif;
+      --font-body:    'Lato', sans-serif;
+      --font-mono:    'JetBrains Mono', monospace;
+      --nav-h:        64px;
+      --safe-bottom:  env(safe-area-inset-bottom, 0px);
+    }
+
+    /* ══════════════════════════════════════════════
+       RESET & BASE
+    ══════════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { height: 100%; overscroll-behavior: none; }
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      height: 100%; overflow: hidden;
+      position: fixed; width: 100%;
+      -webkit-font-smoothing: antialiased;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 0%, rgba(201,168,76,0.04) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 80% at 80% 100%, rgba(139,38,53,0.03) 0%, transparent 60%);
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ══════════════════════════════════════════════
+       ANIMATIONS
+    ══════════════════════════════════════════════ */
+    @keyframes spin        { to { transform: rotate(360deg); } }
+    @keyframes glow-pulse  { 0%,100%{filter:drop-shadow(0 0 8px rgba(201,168,76,0.35))} 50%{filter:drop-shadow(0 0 24px rgba(201,168,76,0.75))} }
+    @keyframes fade-in     { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+    @keyframes slide-up    { from{transform:translateY(40px);opacity:0} to{transform:none;opacity:1} }
+    @keyframes shake       { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-8px)} 40%,80%{transform:translateX(8px)} }
+    @keyframes toast-out   { to{opacity:0;transform:translateX(100%)} }
+    @keyframes badge-pop   { 0%{transform:scale(1)} 50%{transform:scale(1.3)} 100%{transform:scale(1)} }
+
+    /* ══════════════════════════════════════════════
+       UTILITIES
+    ══════════════════════════════════════════════ */
+    .hidden { display: none !important; }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 12px 24px; border-radius: var(--radius-sm); border: none;
+      font-family: var(--font-body); font-weight: 700; font-size: 0.9rem;
+      letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer;
+      transition: all 0.2s ease; position: relative; overflow: hidden;
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: linear-gradient(135deg, var(--gold), #8a5c18); color: #fff; }
+    .btn-primary:hover:not(:disabled) { filter: brightness(1.12); transform: translateY(-1px); }
+    .btn-outline { background: transparent; color: var(--gold); border: 1.5px solid var(--gold); }
+    .btn-outline:hover:not(:disabled) { background: rgba(201,168,76,0.10); }
+    .btn-ghost { background: var(--input-bg); color: var(--text-primary); border: 1px solid var(--border-soft); }
+    .btn-ghost:hover:not(:disabled) { background: rgba(255,255,255,0.08); }
+    .btn-danger { background: linear-gradient(135deg, var(--crimson), #5a1420); color: #fff; }
+    .btn-danger:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); }
+    .btn-sm { padding: 7px 14px; font-size: 0.78rem; }
+    .btn-xs { padding: 4px 10px; font-size: 0.72rem; }
+
+    .field { margin-bottom: 16px; }
+    .field label {
+      display: block; font-size: 0.72rem; letter-spacing: 0.09em;
+      text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; font-weight: 700;
+    }
+    input[type=text], input[type=email], input[type=password],
+    input[type=number], input[type=datetime-local], input[type=url],
+    textarea, select {
+      width: 100%; padding: 11px 14px; border-radius: var(--radius-sm);
+      background: var(--input-bg); border: 1.5px solid var(--input-border);
+      color: var(--text-primary); font-family: var(--font-body); font-size: 0.92rem;
+      transition: border-color 0.2s; outline: none; -webkit-appearance: none;
+    }
+    input:focus, textarea:focus, select:focus { border-color: var(--gold); }
+    select option { background: var(--bg-mid); color: var(--text-primary); }
+    textarea { resize: vertical; min-height: 80px; }
+
+    .badge {
+      display: inline-flex; align-items: center; padding: 3px 10px;
+      border-radius: 20px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em;
+    }
+    .badge-gold    { background: var(--gold-dim); color: var(--gold); border: 1px solid var(--border); }
+    .badge-crimson { background: var(--crimson-dim); color: #e05a6a; border: 1px solid rgba(139,38,53,0.3); }
+    .badge-green   { background: var(--green-dim); color: #4aaa72; border: 1px solid rgba(46,125,79,0.3); }
+    .badge-blue    { background: rgba(30,90,150,0.12); color: var(--text-muted); border: 1px solid var(--border-soft); }
+
+    /* ══════════════════════════════════════════════
+       LOADING OVERLAY
+    ══════════════════════════════════════════════ */
+    #loading-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: var(--bg-deep);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 24px;
+      transition: opacity 0.4s ease;
+    }
+    #loading-overlay.fade-out { opacity: 0; pointer-events: none; }
+    .loader-logo {
+      width: 72px; height: 72px; object-fit: contain;
+      filter: drop-shadow(0 0 14px rgba(201,168,76,0.45));
+      animation: glow-pulse 2s ease-in-out infinite;
+    }
+    .loader-ring {
+      width: 38px; height: 38px;
+      border: 3px solid var(--border-soft);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+
+    /* ══════════════════════════════════════════════
+       TOAST
+    ══════════════════════════════════════════════ */
+    #toast-container {
+      position: fixed; top: 20px; right: 16px;
+      z-index: 10000; display: flex; flex-direction: column; gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px; border-radius: var(--radius-sm);
+      font-size: 0.86rem; font-weight: 600;
+      background: var(--bg-card); border: 1px solid var(--border-soft);
+      box-shadow: var(--shadow); animation: fade-in 0.3s ease;
+      pointer-events: auto; max-width: 320px;
+    }
+    .toast.success { border-left: 3px solid var(--gold); }
+    .toast.error   { border-left: 3px solid var(--crimson); }
+    .toast.info    { border-left: 3px solid var(--text-dim); }
+    .toast-icon    { font-size: 0.78rem; flex-shrink: 0; }
+
+    /* ══════════════════════════════════════════════
+       AUTH SCREEN
+    ══════════════════════════════════════════════ */
+    #auth-screen {
+      position: fixed; inset: 0; z-index: 100;
+      background: var(--bg-deep);
+      display: flex; flex-direction: column; overflow-y: auto;
+      animation: fade-in 0.3s ease;
+    }
+    .auth-hero {
+      background: linear-gradient(160deg, var(--bg-card) 0%, var(--bg-mid) 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 56px 32px 36px; text-align: center; flex-shrink: 0;
+    }
+    .auth-hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--crimson-dim); border: 1px solid rgba(139,38,53,0.35);
+      border-radius: 20px; padding: 5px 14px;
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: #e05a6a; margin-bottom: 20px;
+    }
+    .auth-hero-logo {
+      font-family: var(--font-display);
+      font-size: 2rem; color: var(--gold); margin-bottom: 8px;
+    }
+    .auth-hero h1 {
+      font-family: var(--font-display); font-size: 1.6rem;
+      color: var(--text-primary); margin-bottom: 8px;
+    }
+    .auth-hero p { color: var(--text-muted); font-size: 0.85rem; letter-spacing: 0.03em; }
+    .auth-body { padding: 28px 24px 56px; flex: 1; max-width: 440px; margin: 0 auto; width: 100%; }
+
+    .auth-card {
+      background: var(--bg-card); border: 1px solid var(--border-soft);
+      border-radius: var(--radius); padding: 28px 24px; margin-bottom: 20px;
+    }
+    .auth-card-title {
+      font-family: var(--font-display); font-size: 1.1rem;
+      color: var(--text-primary); margin-bottom: 18px;
+    }
+    .auth-divider {
+      text-align: center; color: var(--text-dim); font-size: 0.75rem;
+      letter-spacing: 0.08em; text-transform: uppercase; margin: 20px 0;
+      position: relative;
+    }
+    .auth-divider::before, .auth-divider::after {
+      content: ''; position: absolute; top: 50%; width: calc(50% - 30px);
+      height: 1px; background: var(--border-soft);
+    }
+    .auth-divider::before { left: 0; }
+    .auth-divider::after  { right: 0; }
+
+    /* ══════════════════════════════════════════════
+       SECURITY CODE SCREEN
+    ══════════════════════════════════════════════ */
+    #security-screen {
+      position: fixed; inset: 0; z-index: 200;
+      background: var(--bg-deep);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 32px 24px;
+      animation: fade-in 0.3s ease;
+    }
+    .security-icon {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: var(--gold-dim); border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem; margin-bottom: 24px;
+      animation: glow-pulse 3s ease-in-out infinite;
+    }
+    .security-title {
+      font-family: var(--font-display); font-size: 1.5rem;
+      color: var(--text-primary); margin-bottom: 8px; text-align: center;
+    }
+    .security-sub { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 36px; text-align: center; }
+    .pin-display {
+      display: flex; gap: 10px; justify-content: center; margin-bottom: 24px;
+    }
+    .pin-dot {
+      width: 18px; height: 18px; border-radius: 50%;
+      border: 2px solid var(--gold); background: transparent;
+      transition: all 0.15s;
+    }
+    .pin-dot.filled { background: var(--gold); }
+    .pin-dot.error  { border-color: var(--crimson); background: var(--crimson); }
+    .pin-keypad {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 12px; max-width: 280px; width: 100%; margin-bottom: 24px;
+    }
+    .pin-key {
+      height: 62px; border-radius: var(--radius-sm);
+      background: var(--bg-card); border: 1px solid var(--border-soft);
+      color: var(--text-primary); font-family: var(--font-body);
+      font-size: 1.2rem; font-weight: 700; cursor: pointer;
+      transition: all 0.15s; -webkit-tap-highlight-color: transparent;
+    }
+    .pin-key:hover { background: var(--bg-light); border-color: var(--border); }
+    .pin-key:active { transform: scale(0.94); background: var(--gold-dim); }
+    .pin-key.delete { font-size: 1.4rem; color: var(--text-muted); }
+    .security-error {
+      color: var(--crimson); font-size: 0.84rem; text-align: center; font-weight: 700;
+      min-height: 20px;
+    }
+
+    /* ══════════════════════════════════════════════
+       MAIN APP SHELL
+    ══════════════════════════════════════════════ */
+    #app {
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column;
+      animation: fade-in 0.3s ease;
+    }
+
+    /* Top header */
+    .app-header {
+      flex-shrink: 0; background: var(--bg-mid);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 20px;
+      padding-top: calc(12px + env(safe-area-inset-top, 0px));
+      display: flex; align-items: center; gap: 12px;
+      position: relative; z-index: 10;
+    }
+    .admin-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: var(--crimson-dim); border: 1px solid rgba(139,38,53,0.35);
+      border-radius: 20px; padding: 3px 10px;
+      font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: #e05a6a; flex-shrink: 0;
+    }
+    .app-header-title { flex: 1; }
+    .app-header-title h1 {
+      font-family: var(--font-display); font-size: 1.05rem;
+      color: var(--text-primary); line-height: 1.2;
+    }
+    .app-header-title small {
+      display: block; font-family: var(--font-body);
+      font-size: 0.68rem; color: var(--text-muted); letter-spacing: 0.05em;
+    }
+    .header-action {
+      width: 34px; height: 34px; border-radius: 50%;
+      border: 1.5px solid var(--border); background: var(--input-bg);
+      color: var(--text-muted); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s; flex-shrink: 0;
+    }
+    .header-action:hover { background: var(--input-focus); color: var(--gold); border-color: var(--gold); }
+
+    /* Bottom nav */
+    .app-nav {
+      flex-shrink: 0; height: var(--nav-h);
+      background: var(--bg-mid); border-top: 1px solid var(--border);
+      padding-bottom: var(--safe-bottom);
+      display: flex; z-index: 10;
+    }
+    .nav-item {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 4px;
+      cursor: pointer; transition: all 0.2s;
+      color: var(--text-dim); border: none; background: none;
+      -webkit-tap-highlight-color: transparent; position: relative;
+    }
+    .nav-item.active { color: var(--gold); }
+    .nav-item svg { transition: all 0.2s; }
+    .nav-item.active svg { filter: drop-shadow(0 0 4px rgba(201,168,76,0.5)); }
+    .nav-label { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+    .nav-badge {
+      position: absolute; top: 6px; right: calc(50% - 16px);
+      background: var(--crimson); color: #fff; border-radius: 10px;
+      font-size: 0.6rem; font-weight: 700; padding: 1px 5px;
+      min-width: 16px; text-align: center;
+    }
+
+    /* Content area */
+    .app-content { flex: 1; overflow: hidden; position: relative; }
+    .screen {
+      position: absolute; inset: 0;
+      overflow-y: auto; -webkit-overflow-scrolling: touch;
+      padding: 16px 16px calc(20px);
+      display: none;
+    }
+    .screen.active { display: block; animation: fade-in 0.2s ease; }
+
+    .screen-title {
+      font-family: var(--font-display); font-size: 1.3rem;
+      color: var(--text-primary); margin-bottom: 4px;
+    }
+    .screen-sub { color: var(--text-muted); font-size: 0.82rem; margin-bottom: 20px; }
+
+    /* ══════════════════════════════════════════════
+       CARDS / SECTIONS
+    ══════════════════════════════════════════════ */
+    .card {
+      background: var(--bg-card); border: 1px solid var(--border-soft);
+      border-radius: var(--radius); padding: 20px; margin-bottom: 14px;
+    }
+    .card-title {
+      font-family: var(--font-display); font-size: 1rem;
+      color: var(--text-primary); margin-bottom: 4px;
+    }
+    .card-sub { color: var(--text-muted); font-size: 0.78rem; margin-bottom: 16px; }
+
+    .section-label {
+      font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--text-dim); font-weight: 700; padding: 8px 0 8px;
+    }
+
+    /* ══════════════════════════════════════════════
+       STAT TILES (Dashboard)
+    ══════════════════════════════════════════════ */
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+    .stat-tile {
+      background: var(--bg-card); border: 1px solid var(--border-soft);
+      border-radius: var(--radius); padding: 16px; position: relative; overflow: hidden;
+    }
+    .stat-tile::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    }
+    .stat-tile.gold::before  { background: var(--gold); }
+    .stat-tile.red::before   { background: var(--crimson); }
+    .stat-tile.green::before { background: var(--green); }
+    .stat-tile.blue::before  { background: #2a6496; }
+    .stat-value {
+      font-family: var(--font-mono); font-size: 1.9rem; font-weight: 600;
+      color: var(--text-primary); line-height: 1; margin-bottom: 4px;
+    }
+    .stat-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+
+    /* ══════════════════════════════════════════════
+       CALENDAR EVENTS LIST
+    ══════════════════════════════════════════════ */
+    .event-admin-card {
+      background: var(--bg-card); border: 1px solid var(--border-soft);
+      border-radius: var(--radius); padding: 16px; margin-bottom: 10px;
+      border-left: 3px solid var(--gold);
+    }
+    .event-admin-header { display: flex; align-items: flex-start; gap: 12px; }
+    .event-admin-info { flex: 1; min-width: 0; }
+    .event-admin-title { font-weight: 700; font-size: 0.95rem; color: var(--text-primary); margin-bottom: 3px; }
+    .event-admin-meta  { font-size: 0.76rem; color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 8px; }
+    .event-admin-actions { display: flex; gap: 8px; margin-top: 12px; }
+
+    /* ══════════════════════════════════════════════
+       CHAT MESSAGE LIST (moderation)
+    ══════════════════════════════════════════════ */
+    .msg-mod-card {
+      background: var(--bg-card); border: 1px solid var(--border-soft);
+      border-radius: var(--radius-sm); padding: 13px 14px; margin-bottom: 8px;
+      display: flex; gap: 12px; align-items: flex-start;
+    }
+    .msg-mod-avatar {
+      width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--gold), #8a5c18);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.6rem; font-weight: 700; color: #fff;
+    }
+    .msg-mod-body { flex: 1; min-width: 0; }
+    .msg-mod-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 3px; }
+    .msg-mod-sender { font-weight: 700; font-size: 0.82rem; color: var(--gold); }
+    .msg-mod-time   { font-size: 0.68rem; color: var(--text-dim); }
+    .msg-mod-text   { font-size: 0.84rem; color: var(--text-primary); line-height: 1.4; word-break: break-word; }
+    .msg-mod-del    {
+      flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
+      background: none; border: 1px solid var(--border-soft); color: var(--text-dim);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .msg-mod-del:hover { background: var(--crimson-dim); color: #e05a6a; border-color: rgba(139,38,53,0.4); }
+
+    /* ══════════════════════════════════════════════
+       DIRECTORY LIST
+    ══════════════════════════════════════════════ */
+    .dir-card {
+      background: var(--bg-card); border: 1px solid var(--border-soft);
+      border-radius: var(--radius-sm); padding: 13px 14px; margin-bottom: 8px;
+      display: flex; gap: 12px; align-items: center;
+    }
+    .dir-avatar {
+      width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--gold), #8a5c18);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.76rem; font-weight: 700; color: #fff;
+    }
+    .dir-info { flex: 1; min-width: 0; }
+    .dir-name { font-weight: 700; font-size: 0.9rem; color: var(--text-primary); }
+    .dir-church { font-size: 0.76rem; color: var(--text-muted); }
+    .dir-email  { font-size: 0.7rem; color: var(--text-dim); margin-top: 2px; }
+
+    /* ══════════════════════════════════════════════
+       MODAL
+    ══════════════════════════════════════════════ */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 500;
+      background: var(--overlay-bg);
+      display: flex; align-items: flex-end; justify-content: center;
+      padding-bottom: var(--safe-bottom);
+    }
+    .modal-sheet {
+      background: var(--bg-mid); border-radius: 20px 20px 0 0;
+      border: 1px solid var(--border-soft); border-bottom: none;
+      width: 100%; max-width: 600px; max-height: 90vh;
+      display: flex; flex-direction: column;
+      animation: slide-up 0.3s ease;
+    }
+    .modal-handle {
+      width: 36px; height: 4px; border-radius: 2px;
+      background: var(--border-soft); margin: 12px auto 6px;
+    }
+    .modal-header {
+      display: flex; align-items: center; padding: 12px 20px 14px;
+      border-bottom: 1px solid var(--border-soft); flex-shrink: 0; gap: 12px;
+    }
+    .modal-title { font-family: var(--font-display); font-size: 1.1rem; flex: 1; color: var(--text-primary); }
+    .modal-close {
+      width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--border-soft);
+      background: var(--input-bg); color: var(--text-muted); cursor: pointer;
+      display: flex; align-items: center; justify-content: center; font-size: 0.75rem;
+    }
+    .modal-close:hover { color: var(--text-primary); background: var(--bg-light); }
+    .modal-body {
+      padding: 20px; overflow-y: auto; -webkit-overflow-scrolling: touch; flex: 1;
+    }
+    .modal-footer {
+      padding: 16px 20px; border-top: 1px solid var(--border-soft);
+      display: flex; gap: 10px; flex-shrink: 0;
+    }
+    .modal-footer .btn { flex: 1; }
+
+    /* ══════════════════════════════════════════════
+       CONFIRM DIALOG
+    ══════════════════════════════════════════════ */
+    #confirm-overlay {
+      position: fixed; inset: 0; z-index: 600;
+      background: var(--overlay-bg);
+      display: flex; align-items: center; justify-content: center; padding: 24px;
+    }
+    .confirm-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 28px 24px;
+      max-width: 380px; width: 100%;
+      animation: fade-in 0.2s ease;
+    }
+    .confirm-title {
+      font-family: var(--font-display); font-size: 1.15rem;
+      color: var(--text-primary); margin-bottom: 10px;
+    }
+    .confirm-body { color: var(--text-muted); font-size: 0.86rem; margin-bottom: 24px; line-height: 1.6; }
+    .confirm-actions { display: flex; gap: 10px; }
+    .confirm-actions .btn { flex: 1; }
+
+    /* ══════════════════════════════════════════════
+       NOTIFICATION COMPOSER
+    ══════════════════════════════════════════════ */
+    .notif-preview {
+      background: var(--bg-deep); border: 1px solid var(--border-soft);
+      border-radius: var(--radius-sm); padding: 14px; margin-top: 12px;
+    }
+    .notif-preview-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 4px; color: var(--text-primary); }
+    .notif-preview-body  { font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; }
+
+    /* ══════════════════════════════════════════════
+       EMPTY STATES
+    ══════════════════════════════════════════════ */
+    .empty-state {
+      text-align: center; padding: 48px 24px;
+      color: var(--text-muted);
+    }
+    .empty-state-icon { font-size: 2.5rem; margin-bottom: 12px; opacity: 0.4; }
+    .empty-state-title { font-family: var(--font-display); font-size: 1rem; margin-bottom: 6px; }
+    .empty-state-sub   { font-size: 0.82rem; opacity: 0.7; }
+
+    /* Loading spinner inline */
+    .spinner {
+      width: 20px; height: 20px; border: 2.5px solid var(--border-soft);
+      border-top-color: var(--gold); border-radius: 50%;
+      animation: spin 0.8s linear infinite; flex-shrink: 0;
+    }
+    .loading-row {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      padding: 32px; color: var(--text-muted); font-size: 0.85rem;
+    }
+
+    /* Google OAuth button */
+    .btn-google {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      width: 100%; padding: 13px 20px; border-radius: var(--radius-sm);
+      background: #fff; color: #3c4043; border: 1px solid #dadce0;
+      font-family: var(--font-body); font-weight: 700; font-size: 0.88rem;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .btn-google:hover { background: #f8f9fa; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+
+    /* Color picker row */
+    .color-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .color-swatch {
+      width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+      border: 2px solid transparent; transition: all 0.15s;
+    }
+    .color-swatch.selected { border-color: #fff; transform: scale(1.15); }
+
+    /* Tabs inside screen */
+    .screen-tabs {
+      display: flex; gap: 4px; background: var(--input-bg);
+      border: 1px solid var(--border-soft); border-radius: var(--radius-sm);
+      padding: 4px; margin-bottom: 16px;
+    }
+    .screen-tab {
+      flex: 1; padding: 9px; border: none; background: transparent;
+      color: var(--text-muted); font-family: var(--font-body);
+      font-weight: 700; font-size: 0.78rem; letter-spacing: 0.05em;
+      text-transform: uppercase; border-radius: calc(var(--radius-sm) - 3px);
+      cursor: pointer; transition: all 0.2s;
+    }
+    .screen-tab.active { background: var(--gold); color: #fff; }
+
+    /* Search bar */
+    .search-bar {
+      position: relative; margin-bottom: 14px;
+    }
+    .search-bar input {
+      padding-left: 36px; background: var(--bg-card);
+    }
+    .search-bar-icon {
+      position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+      color: var(--text-dim); pointer-events: none;
+    }
+
+    /* Inline alert */
+    .inline-alert {
+      border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 14px;
+      font-size: 0.83rem; line-height: 1.5;
+    }
+    .inline-alert.warn {
+      background: rgba(201,168,76,0.08); border: 1px solid var(--border);
+      color: var(--gold-light);
+    }
+    .inline-alert.info {
+      background: rgba(30,90,150,0.08); border: 1px solid var(--border-soft);
+      color: var(--text-muted);
+    }
+
+    /* OAuth status bar */
+    .oauth-bar {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--bg-card); border: 1px solid var(--border-soft);
+      border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 14px;
+    }
+    .oauth-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--text-dim); flex-shrink: 0; transition: background 0.3s;
+    }
+    .oauth-dot.connected { background: #4aaa72; }
+    .oauth-bar-text { flex: 1; font-size: 0.8rem; color: var(--text-muted); }
+    .oauth-bar-text strong { color: var(--text-primary); font-size: 0.82rem; }
+
+  </style>
+</head>
+<body>
+
+<!-- ════ LOADING OVERLAY ════ -->
+<div id="loading-overlay">
+  <img src="logo.png" class="loader-logo" alt="UCJC"
+       onerror="this.outerHTML='<div style=&quot;font-family:var(--font-display);font-size:2rem;color:var(--gold);&quot;>✝</div>'"/>
+  <div class="loader-ring"></div>
+</div>
+
+<!-- ════ TOAST CONTAINER ════ -->
+<div id="toast-container"></div>
+
+<!-- ════════════════════════════════════════
+     AUTH SCREEN
+════════════════════════════════════════ -->
+<div id="auth-screen" class="hidden">
+  <div class="auth-hero">
+    <div class="auth-hero-badge">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1l3.09 6.26L22 8.27l-5 4.87 1.18 6.88L12 16.77l-6.18 3.25L7 13.14 2 8.27l6.91-1.01z"/></svg>
+      Restricted Access
+    </div>
+    <div class="auth-hero-logo">✝</div>
+    <h1>UCJC Admin Console</h1>
+    <p>Authorized administrators only</p>
+  </div>
+  <div class="auth-body">
+    <div class="auth-card">
+      <div class="auth-card-title">Sign In</div>
+      <div class="field">
+        <label>Email Address</label>
+        <input type="email" id="login-email" placeholder="admin@ucjc.org" autocomplete="email"/>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"
+               onkeydown="if(event.key==='Enter') handleLogin()"/>
+      </div>
+      <div id="login-error" class="hidden" style="background:rgba(139,38,53,0.1);border:1px solid rgba(139,38,53,0.3);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:0.83rem;color:#e05a6a;"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="handleLogin()" id="login-btn">Sign In</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     SECURITY CODE SCREEN
+════════════════════════════════════════ -->
+<div id="security-screen" class="hidden">
+  <div class="security-icon">🔐</div>
+  <div class="security-title">Admin Verification</div>
+  <div class="security-sub">Enter the 6-digit administrator access code</div>
+  <div class="pin-display" id="pin-display">
+    <div class="pin-dot" id="dot-0"></div>
+    <div class="pin-dot" id="dot-1"></div>
+    <div class="pin-dot" id="dot-2"></div>
+    <div class="pin-dot" id="dot-3"></div>
+    <div class="pin-dot" id="dot-4"></div>
+    <div class="pin-dot" id="dot-5"></div>
+  </div>
+  <div class="pin-keypad">
+    <button class="pin-key" onclick="pinPress('1')">1</button>
+    <button class="pin-key" onclick="pinPress('2')">2</button>
+    <button class="pin-key" onclick="pinPress('3')">3</button>
+    <button class="pin-key" onclick="pinPress('4')">4</button>
+    <button class="pin-key" onclick="pinPress('5')">5</button>
+    <button class="pin-key" onclick="pinPress('6')">6</button>
+    <button class="pin-key" onclick="pinPress('7')">7</button>
+    <button class="pin-key" onclick="pinPress('8')">8</button>
+    <button class="pin-key" onclick="pinPress('9')">9</button>
+    <button class="pin-key" style="opacity:0" disabled></button>
+    <button class="pin-key" onclick="pinPress('0')">0</button>
+    <button class="pin-key delete" onclick="pinDelete()">⌫</button>
+  </div>
+  <div class="security-error" id="pin-error"></div>
+  <button class="btn btn-ghost btn-sm" style="margin-top:16px" onclick="handleSignOut()">← Sign Out</button>
+</div>
+
+<!-- ════════════════════════════════════════
+     MAIN ADMIN APP
+════════════════════════════════════════ -->
+<div id="app" class="hidden">
+
+  <!-- Header -->
+  <div class="app-header">
+    <div class="admin-badge">
+      <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1l3.09 6.26L22 8.27l-5 4.87 1.18 6.88L12 16.77l-6.18 3.25L7 13.14 2 8.27l6.91-1.01z"/></svg>
+      Admin
+    </div>
+    <div class="app-header-title">
+      <h1>UCJC Console</h1>
+      <small id="header-user">Loading…</small>
+    </div>
+    <button class="header-action" onclick="handleSignOut()" title="Sign Out">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    </button>
+  </div>
+
+  <!-- Content -->
+  <div class="app-content">
+
+    <!-- ── DASHBOARD ─────────────────────── -->
+    <div class="screen active" id="screen-dashboard">
+      <div class="screen-title">Dashboard</div>
+      <div class="screen-sub">Overview of convocation activity</div>
+      <div class="stat-grid">
+        <div class="stat-tile gold">
+          <div class="stat-value" id="stat-events">—</div>
+          <div class="stat-label">Events</div>
+        </div>
+        <div class="stat-tile blue">
+          <div class="stat-value" id="stat-users">—</div>
+          <div class="stat-label">Registrants</div>
+        </div>
+        <div class="stat-tile red">
+          <div class="stat-value" id="stat-chat">—</div>
+          <div class="stat-label">Chat Msgs</div>
+        </div>
+        <div class="stat-tile green">
+          <div class="stat-value" id="stat-prayer">—</div>
+          <div class="stat-label">Prayers</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Quick Actions</div>
+        <div class="card-sub">Jump to common admin tasks</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <button class="btn btn-primary" onclick="showScreen('calendar')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Manage Calendar Events
+          </button>
+          <button class="btn btn-outline" onclick="showScreen('moderation')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Moderate Chat & Prayers
+          </button>
+          <button class="btn btn-ghost" onclick="showScreen('directory')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Add to Directory
+          </button>
+          <button class="btn btn-ghost" onclick="showScreen('notifications')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            Send Notification
+          </button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Recent Notifications</div>
+        <div class="card-sub">Last 3 broadcasts sent</div>
+        <div id="recent-notifs"><div class="loading-row"><div class="spinner"></div> Loading…</div></div>
+      </div>
+    </div>
+
+    <!-- ── CALENDAR ─────────────────────── -->
+    <div class="screen" id="screen-calendar">
+      <div class="screen-title">Calendar</div>
+      <div class="screen-sub">Add or edit Google Calendar events</div>
+
+      <!-- OAuth Status Bar -->
+      <div class="oauth-bar" id="oauth-bar">
+        <div class="oauth-dot" id="oauth-dot"></div>
+        <div class="oauth-bar-text" id="oauth-bar-text">Google Calendar not connected</div>
+        <button class="btn btn-xs btn-outline" id="oauth-btn" onclick="connectGoogleCalendar()">Connect</button>
+      </div>
+
+      <div class="inline-alert warn">
+        <strong>Note:</strong> Creating/editing events requires Google OAuth authorization. Click Connect above, then sign in with the Google account that owns this calendar.
+      </div>
+
+      <button class="btn btn-primary" style="width:100%;margin-bottom:16px" onclick="openEventModal(null)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add New Event
+      </button>
+
+      <div class="section-label">Current Events</div>
+      <div id="cal-event-list"><div class="loading-row"><div class="spinner"></div> Loading events…</div></div>
+    </div>
+
+    <!-- ── MODERATION ─────────────────────── -->
+    <div class="screen" id="screen-moderation">
+      <div class="screen-title">Moderation</div>
+      <div class="screen-sub">Remove inappropriate messages or prayer requests</div>
+      <div class="screen-tabs">
+        <button class="screen-tab active" id="mod-tab-global" onclick="switchModTab('global')">Global Chat</button>
+        <button class="screen-tab" id="mod-tab-prayer" onclick="switchModTab('prayer')">Prayer</button>
+      </div>
+      <div class="search-bar">
+        <div class="search-bar-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+        <input type="text" id="mod-search" placeholder="Search messages…" oninput="filterMessages()"/>
+      </div>
+      <div id="mod-message-list"><div class="loading-row"><div class="spinner"></div> Loading…</div></div>
+    </div>
+
+    <!-- ── DIRECTORY ─────────────────────── -->
+    <div class="screen" id="screen-directory">
+      <div class="screen-title">Directory</div>
+      <div class="screen-sub">Add new attendees to the directory</div>
+      <button class="btn btn-primary" style="width:100%;margin-bottom:16px" onclick="openAddDirectoryModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+        Add Person to Directory
+      </button>
+      <div class="search-bar">
+        <div class="search-bar-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+        <input type="text" id="dir-search" placeholder="Search directory…" oninput="filterDirectory()"/>
+      </div>
+      <div class="section-label">Registered Attendees</div>
+      <div id="dir-list"><div class="loading-row"><div class="spinner"></div> Loading…</div></div>
+    </div>
+
+    <!-- ── NOTIFICATIONS ─────────────────────── -->
+    <div class="screen" id="screen-notifications">
+      <div class="screen-title">Notifications</div>
+      <div class="screen-sub">Broadcast announcements to all app users</div>
+
+      <div class="card">
+        <div class="card-title">Compose Broadcast</div>
+        <div class="card-sub">This will appear as a notification in the main app for all users</div>
+        <div class="field">
+          <label>Notification Type</label>
+          <select id="notif-type" onchange="updateNotifPreview()">
+            <option value="announcement">📢 General Announcement</option>
+            <option value="calendar">📅 Calendar Change</option>
+            <option value="urgent">🚨 Urgent Alert</option>
+            <option value="prayer">🙏 Prayer Request</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Title</label>
+          <input type="text" id="notif-title" placeholder="Notification title…" oninput="updateNotifPreview()"/>
+        </div>
+        <div class="field">
+          <label>Message</label>
+          <textarea id="notif-body" placeholder="Write your message here…" rows="3" oninput="updateNotifPreview()"></textarea>
+        </div>
+        <div class="field">
+          <label>Link to Event (optional)</label>
+          <select id="notif-event">
+            <option value="">— No specific event —</option>
+          </select>
+        </div>
+        <div class="notif-preview" id="notif-preview">
+          <div class="notif-preview-title" id="notif-prev-title">Notification Preview</div>
+          <div class="notif-preview-body" id="notif-prev-body">Your message will appear here…</div>
+        </div>
+        <button class="btn btn-primary" style="width:100%;margin-top:16px" onclick="sendNotification()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Broadcast Notification
+        </button>
+      </div>
+
+      <div class="section-label">Notification History</div>
+      <div id="notif-history"><div class="loading-row"><div class="spinner"></div> Loading…</div></div>
+    </div>
+
+  </div><!-- end app-content -->
+
+  <!-- Bottom Nav -->
+  <div class="app-nav">
+    <button class="nav-item active" id="nav-dashboard" onclick="showScreen('dashboard')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      <span class="nav-label">Dashboard</span>
+    </button>
+    <button class="nav-item" id="nav-calendar" onclick="showScreen('calendar')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span class="nav-label">Calendar</span>
+    </button>
+    <button class="nav-item" id="nav-moderation" onclick="showScreen('moderation')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span class="nav-label">Moderate</span>
+      <span class="nav-badge hidden" id="mod-badge">0</span>
+    </button>
+    <button class="nav-item" id="nav-directory" onclick="showScreen('directory')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span class="nav-label">Directory</span>
+    </button>
+    <button class="nav-item" id="nav-notifications" onclick="showScreen('notifications')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span class="nav-label">Notify</span>
+    </button>
+  </div>
+
+</div><!-- end #app -->
+
+<!-- ════════════════════════════════════════
+     EVENT MODAL (Add / Edit)
+════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="event-modal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title" id="event-modal-title">New Event</div>
+      <button class="modal-close" onclick="closeModal('event-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="ev-id"/>
+      <input type="hidden" id="ev-gcal-id"/>
+      <div class="field">
+        <label>Event Title *</label>
+        <input type="text" id="ev-title" placeholder="e.g. Morning Worship Service"/>
+      </div>
+      <div class="field">
+        <label>Start Date & Time *</label>
+        <input type="datetime-local" id="ev-start"/>
+      </div>
+      <div class="field">
+        <label>End Date & Time *</label>
+        <input type="datetime-local" id="ev-end"/>
+      </div>
+      <div class="field">
+        <label>Location</label>
+        <input type="text" id="ev-location" placeholder="e.g. Main Sanctuary"/>
+      </div>
+      <div class="field">
+        <label>Description</label>
+        <textarea id="ev-desc" placeholder="Event description…"></textarea>
+      </div>
+      <div class="field">
+        <label>Color Tag</label>
+        <div class="color-row" id="ev-color-row">
+          <div class="color-swatch selected" style="background:#8B2635" data-color="11" onclick="selectColor(this)"></div>
+          <div class="color-swatch" style="background:#C9A84C" data-color="6"  onclick="selectColor(this)"></div>
+          <div class="color-swatch" style="background:#2a6496" data-color="2"  onclick="selectColor(this)"></div>
+          <div class="color-swatch" style="background:#2e7d4f" data-color="9"  onclick="selectColor(this)"></div>
+          <div class="color-swatch" style="background:#5c3e8f" data-color="10" onclick="selectColor(this)"></div>
+          <div class="color-swatch" style="background:#1a6b9a" data-color="1"  onclick="selectColor(this)"></div>
+          <div class="color-swatch" style="background:#7b3b3b" data-color="3"  onclick="selectColor(this)"></div>
+        </div>
+        <input type="hidden" id="ev-color" value="11"/>
+      </div>
+      <div class="field" style="margin-top:6px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="ev-notify" style="width:auto;margin:0"/>
+          Send push notification about this event change
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('event-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEvent()" id="save-event-btn">Save Event</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     ADD DIRECTORY PERSON MODAL
+════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="dir-modal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title">Add to Directory</div>
+      <button class="modal-close" onclick="closeModal('dir-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="inline-alert info">
+        This creates a directory-only entry. For full app access, the person must register through the main app.
+      </div>
+      <div class="field">
+        <label>Full Name *</label>
+        <input type="text" id="dir-name" placeholder="First and last name"/>
+      </div>
+      <div class="field">
+        <label>Home Church</label>
+        <input type="text" id="dir-church" placeholder="e.g. Greater Love UCJC"/>
+      </div>
+      <div class="field">
+        <label>Email Address</label>
+        <input type="email" id="dir-email" placeholder="person@example.com"/>
+      </div>
+      <div class="field">
+        <label>Phone (optional)</label>
+        <input type="text" id="dir-phone" placeholder="(555) 000-0000"/>
+      </div>
+      <div class="field">
+        <label>Role / Title</label>
+        <input type="text" id="dir-role" placeholder="e.g. Elder, Deacon, Minister…"/>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('dir-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveDirectoryEntry()" id="save-dir-btn">Add Person</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     CONFIRM DIALOG
+════════════════════════════════════════ -->
+<div id="confirm-overlay" class="hidden">
+  <div class="confirm-card">
+    <div class="confirm-title" id="confirm-title">Confirm Action</div>
+    <div class="confirm-body" id="confirm-body"></div>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" onclick="confirmResolve(false)">Cancel</button>
+      <button class="btn btn-danger" id="confirm-ok" onclick="confirmResolve(true)">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     FIREBASE SDK
+════════════════════════════════════════ -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<!-- Google Identity Services (for Calendar OAuth) -->
+<script src="https://accounts.google.com/gsi/client" async></script>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ══════════════════════════════════════════
+     CONFIG
+  ══════════════════════════════════════════ */
+  const FIREBASE_CONFIG = {
+    apiKey:            'AIzaSyDV34G66jQ58MBPBJq3MfmhZF8mOdifVqg',
+    authDomain:        'ucjcconvocation.firebaseapp.com',
+    projectId:         'ucjcconvocation',
+    storageBucket:     'ucjcconvocation.firebasestorage.app',
+    messagingSenderId: '698752970791',
+    appId:             '1:698752970791:web:0ae1b0094858609579de02',
+    measurementId:     'G-0M5WBTR83N'
+  };
+
+  // Google Calendar OAuth2 – for write access
+  // You MUST set up OAuth 2.0 Client ID in Google Cloud Console
+  // and enable Google Calendar API.
+  // Replace this with your actual OAuth Client ID.
+  const GCAL_CLIENT_ID  = '698752970791-4u301ft12476gefotj313sb1t3ovn5p1.apps.googleusercontent.com';
+  const GCAL_API_KEY    = 'AIzaSyDV34G66jQ58MBPBJq3MfmhZF8mOdifVqg';
+  const CALENDAR_ID     = 'c_ab7c60e65ae19abaea378c282b6770147ad855d3c58c442c8fa611b7e5be2934@group.calendar.google.com';
+  const ADMIN_PIN       = '111965';
+
+  /* ══════════════════════════════════════════
+     FIREBASE INIT
+  ══════════════════════════════════════════ */
+  firebase.initializeApp(FIREBASE_CONFIG);
+  const auth = firebase.auth();
+  const db   = firebase.firestore();
+  const FSV  = firebase.firestore.FieldValue;
+
+  /* ══════════════════════════════════════════
+     STATE
+  ══════════════════════════════════════════ */
+  let currentUser      = null;
+  let pinBuffer        = '';
+  let pinVerified      = false;
+  let allMessages      = [];   // global chat
+  let allPrayers       = [];   // prayer requests
+  let allUsers         = [];   // directory
+  let allEvents        = [];   // calendar events (from Firestore cache / fallback)
+  let currentModTab    = 'global';
+  let gcalAccessToken  = null;
+  let confirmCallback  = null;
+  let unsubs           = {};
+
+  /* ══════════════════════════════════════════
+     HELPERS
+  ══════════════════════════════════════════ */
+  const $ = id => document.getElementById(id);
+
+  function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function initials(name) {
+    if (!name) return '?';
+    return name.trim().split(/\s+/).map(p => p[0]).join('').toUpperCase().slice(0,2);
+  }
+
+  function fmtTs(ts) {
+    if (!ts) return '';
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    return d.toLocaleString([], { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
+  }
+
+  function fmtDtLocal(d) {
+    // Convert Date to datetime-local value
+    const pad = n => String(n).padStart(2,'0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  function toast(msg, type = 'info') {
+    const icon = type==='success'?'✓':type==='error'?'✕':'i';
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.innerHTML = `<div class="toast-icon">${icon}</div><span>${escHtml(msg)}</span>`;
+    $('toast-container').appendChild(el);
+    setTimeout(() => {
+      el.style.animation = 'toast-out 0.3s ease forwards';
+      setTimeout(() => el.remove(), 300);
+    }, 3500);
+  }
+
+  function hideLoader() {
+    const o = $('loading-overlay');
+    if (!o || o.classList.contains('hidden')) return;
+    o.classList.add('fade-out');
+    setTimeout(() => o.classList.add('hidden'), 450);
+  }
+
+  window.closeModal = id => $(id).classList.add('hidden');
+
+  /* ══════════════════════════════════════════
+     CONFIRM DIALOG
+  ══════════════════════════════════════════ */
+  function confirm(title, body, okLabel = 'Delete') {
+    return new Promise(resolve => {
+      $('confirm-title').textContent = title;
+      $('confirm-body').textContent  = body;
+      $('confirm-ok').textContent    = okLabel;
+      confirmCallback = resolve;
+      $('confirm-overlay').classList.remove('hidden');
+    });
+  }
+
+  window.confirmResolve = function(result) {
+    $('confirm-overlay').classList.add('hidden');
+    if (confirmCallback) { confirmCallback(result); confirmCallback = null; }
+  };
+
+  /* ══════════════════════════════════════════
+     SCREEN NAV
+  ══════════════════════════════════════════ */
+  window.showScreen = function(name) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const s = $('screen-' + name), n = $('nav-' + name);
+    if (s) s.classList.add('active');
+    if (n) n.classList.add('active');
+    if (name === 'moderation')   loadMessages();
+    if (name === 'directory')    loadDirectory();
+    if (name === 'calendar')     loadCalendarEvents();
+    if (name === 'notifications') loadNotifHistory();
+  };
+
+  /* ══════════════════════════════════════════
+     AUTH
+  ══════════════════════════════════════════ */
+  window.handleLogin = async function() {
+    const email = $('login-email').value.trim();
+    const pw    = $('login-password').value;
+    const btn   = $('login-btn');
+    const err   = $('login-error');
+    err.classList.add('hidden');
+    btn.textContent = 'Signing in…'; btn.disabled = true;
+    try {
+      await auth.signInWithEmailAndPassword(email, pw);
+    } catch (e) {
+      btn.textContent = 'Sign In'; btn.disabled = false;
+      err.textContent = e.code === 'auth/invalid-credential' || e.code === 'auth/user-not-found'
+        ? 'Invalid email or password.' : (e.message || 'Sign-in failed.');
+      err.classList.remove('hidden');
+    }
+  };
+
+  window.handleSignOut = async function() {
+    if (!window.confirm('Sign out of admin console?')) return;
+    pinVerified = false; pinBuffer = '';
+    await auth.signOut();
+  };
+
+  auth.onAuthStateChanged(user => {
+    currentUser = user;
+    hideLoader();
+    if (user) {
+      $('auth-screen').classList.add('hidden');
+      if (!pinVerified) {
+        // Show security code screen
+        $('security-screen').classList.remove('hidden');
+        $('app').classList.add('hidden');
+        resetPin();
+      } else {
+        $('security-screen').classList.add('hidden');
+        enterApp();
+      }
+    } else {
+      pinVerified = false; pinBuffer = '';
+      $('security-screen').classList.add('hidden');
+      $('app').classList.add('hidden');
+      $('auth-screen').classList.remove('hidden');
+    }
+  });
+
+  /* ══════════════════════════════════════════
+     PIN / SECURITY CODE
+  ══════════════════════════════════════════ */
+  function resetPin(isError = false) {
+    pinBuffer = '';
+    for (let i = 0; i < 6; i++) {
+      const d = $(`dot-${i}`);
+      d.classList.remove('filled');
+      if (isError) {
+        d.classList.add('error');
+        setTimeout(() => d.classList.remove('error'), 600);
+      }
+    }
+    if (isError) {
+      const disp = $('pin-display');
+      disp.style.animation = 'shake 0.4s ease';
+      setTimeout(() => disp.style.animation = '', 400);
+      $('pin-error').textContent = 'Incorrect code. Please try again.';
+      setTimeout(() => $('pin-error').textContent = '', 2000);
+    } else {
+      $('pin-error').textContent = '';
+    }
+  }
+
+  window.pinPress = function(digit) {
+    if (pinBuffer.length >= 6) return;
+    pinBuffer += digit;
+    $(`dot-${pinBuffer.length - 1}`).classList.add('filled');
+    if (pinBuffer.length === 6) {
+      setTimeout(() => {
+        if (pinBuffer === ADMIN_PIN) {
+          pinVerified = true;
+          $('security-screen').classList.add('hidden');
+          enterApp();
+        } else {
+          resetPin(true);
+        }
+      }, 200);
+    }
+  };
+
+  window.pinDelete = function() {
+    if (!pinBuffer.length) return;
+    $(`dot-${pinBuffer.length - 1}`).classList.remove('filled');
+    pinBuffer = pinBuffer.slice(0, -1);
+  };
+
+  /* ══════════════════════════════════════════
+     ENTER APP
+  ══════════════════════════════════════════ */
+  function enterApp() {
+    $('app').classList.remove('hidden');
+    $('header-user').textContent = currentUser.email || 'Administrator';
+    loadDashboard();
+    loadCalendarEvents(); // preload
+  }
+
+  /* ══════════════════════════════════════════
+     DASHBOARD
+  ══════════════════════════════════════════ */
+  async function loadDashboard() {
+    try {
+      // Users count
+      db.collection('users').get().then(s => { $('stat-users').textContent = s.size; });
+      // Global chat count
+      db.collection('chat').doc('global').collection('messages').get().then(s => { $('stat-chat').textContent = s.size; });
+      // Prayer count
+      db.collection('chat').doc('prayer').collection('messages').get().then(s => { $('stat-prayer').textContent = s.size; });
+      // Events — try Firestore first, then set placeholder
+      db.collection('adminEvents').get().then(s => {
+        $('stat-events').textContent = s.size || allEvents.length || '—';
+      }).catch(() => { $('stat-events').textContent = allEvents.length || '—'; });
+      // Recent notifs
+      loadRecentNotifs();
+    } catch(e) { console.warn('Dashboard load error:', e); }
+  }
+
+  async function loadRecentNotifs() {
+    try {
+      const snap = await db.collection('adminNotifications')
+        .orderBy('sentAt', 'desc').limit(3).get();
+      if (snap.empty) {
+        $('recent-notifs').innerHTML = '<div class="empty-state"><div class="empty-state-sub">No notifications sent yet</div></div>';
+        return;
+      }
+      $('recent-notifs').innerHTML = snap.docs.map(d => {
+        const n = d.data();
+        return `<div style="padding:10px 0;border-bottom:1px solid var(--border-soft);last-child:border-none">
+          <div style="font-weight:700;font-size:0.85rem;color:var(--text-primary)">${escHtml(n.title)}</div>
+          <div style="font-size:0.76rem;color:var(--text-muted);margin-top:2px">${escHtml(n.body)}</div>
+          <div style="font-size:0.68rem;color:var(--text-dim);margin-top:4px">${fmtTs(n.sentAt)}</div>
+        </div>`;
+      }).join('');
+    } catch(e) {
+      $('recent-notifs').innerHTML = '<div class="empty-state"><div class="empty-state-sub">Could not load notifications</div></div>';
+    }
+  }
+
+  /* ══════════════════════════════════════════
+     GOOGLE CALENDAR OAUTH
+  ══════════════════════════════════════════ */
+  window.connectGoogleCalendar = function() {
+    // Use Google Identity Services token client
+    if (typeof google === 'undefined' || !google.accounts) {
+      toast('Google Identity Services not loaded. Check your internet connection.', 'error');
+      return;
+    }
+    const tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GCAL_CLIENT_ID,
+      scope: 'https://www.googleapis.com/auth/calendar',
+      callback: (tokenResponse) => {
+        if (tokenResponse.error) {
+          toast('Google authorization failed: ' + tokenResponse.error, 'error');
+          return;
+        }
+        gcalAccessToken = tokenResponse.access_token;
+        $('oauth-dot').classList.add('connected');
+        $('oauth-bar-text').innerHTML = '<strong>Connected</strong> — Google Calendar authorized';
+        $('oauth-btn').textContent = 'Reconnect';
+        toast('Google Calendar connected!', 'success');
+      }
+    });
+    tokenClient.requestAccessToken();
+  };
+
+  /* ══════════════════════════════════════════
+     CALENDAR EVENTS
+  ══════════════════════════════════════════ */
+  async function loadCalendarEvents() {
+    $('cal-event-list').innerHTML = '<div class="loading-row"><div class="spinner"></div> Loading events…</div>';
+    allEvents = [];
+
+    // 1. Try Google Calendar API (read-only, no OAuth needed for public calendar)
+    try {
+      const now  = new Date();
+      const tmin = now.toISOString();
+      const tmax = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      const url  = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?key=${GCAL_API_KEY}&timeMin=${tmin}&timeMax=${tmax}&singleEvents=true&orderBy=startTime&maxResults=50`;
+      const res  = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        allEvents = (data.items || []).map(ev => ({
+          id:       ev.id,
+          gcalId:   ev.id,
+          title:    ev.summary || 'Untitled',
+          start:    new Date(ev.start?.dateTime || ev.start?.date),
+          end:      new Date(ev.end?.dateTime   || ev.end?.date),
+          location: ev.location || '',
+          desc:     ev.description || '',
+          colorId:  ev.colorId || '6',
+          source:   'gcal'
+        }));
+      }
+    } catch(e) { console.warn('GCal fetch error:', e); }
+
+    // 2. Also load any admin-created events stored in Firestore
+    try {
+      const snap = await db.collection('adminEvents').orderBy('start', 'asc').get();
+      const fsEvents = snap.docs.map(d => ({ ...d.data(), id: d.id, source: 'firestore',
+        start: d.data().start?.toDate ? d.data().start.toDate() : new Date(d.data().start),
+        end:   d.data().end?.toDate   ? d.data().end.toDate()   : new Date(d.data().end) }));
+      // Merge — Firestore events take precedence by id
+      const ids = new Set(fsEvents.map(e => e.id));
+      allEvents = [...allEvents.filter(e => !ids.has(e.id)), ...fsEvents]
+        .sort((a,b) => a.start - b.start);
+    } catch(e) { console.warn('FS events error:', e); }
+
+    // Populate event select in notifications
+    const sel = $('notif-event');
+    sel.innerHTML = '<option value="">— No specific event —</option>';
+    allEvents.forEach(ev => {
+      const o = document.createElement('option');
+      o.value = ev.id; o.textContent = `${ev.title} (${ev.start.toLocaleDateString()})`;
+      sel.appendChild(o);
+    });
+    $('stat-events').textContent = allEvents.length;
+
+    renderCalendarEvents();
+  }
+
+  const COLOR_MAP = { '11':'#8B2635','6':'#C9A84C','2':'#2a6496','9':'#2e7d4f','10':'#5c3e8f','1':'#1a6b9a','3':'#7b3b3b' };
+
+  function renderCalendarEvents() {
+    const el = $('cal-event-list');
+    if (!allEvents.length) {
+      el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📅</div><div class="empty-state-title">No Events Found</div><div class="empty-state-sub">Add your first event below</div></div>';
+      return;
+    }
+    el.innerHTML = allEvents.map(ev => {
+      const color = COLOR_MAP[ev.colorId] || '#C9A84C';
+      const dateStr = ev.start.toLocaleDateString([], { weekday:'short', month:'short', day:'numeric' });
+      const timeStr = `${ev.start.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})} – ${ev.end.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}`;
+      return `<div class="event-admin-card" style="border-left-color:${color}">
+        <div class="event-admin-header">
+          <div class="event-admin-info">
+            <div class="event-admin-title">${escHtml(ev.title)}</div>
+            <div class="event-admin-meta">
+              <span>📅 ${escHtml(dateStr)}</span>
+              <span>🕐 ${escHtml(timeStr)}</span>
+              ${ev.location ? `<span>📍 ${escHtml(ev.location)}</span>` : ''}
+            </div>
+          </div>
+          <span class="badge ${ev.source==='gcal'?'badge-blue':'badge-green'}" style="flex-shrink:0">${ev.source==='gcal'?'GCal':'Local'}</span>
+        </div>
+        <div class="event-admin-actions">
+          <button class="btn btn-ghost btn-sm" onclick="openEventModal('${escHtml(ev.id)}')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Edit
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="deleteEvent('${escHtml(ev.id)}','${escHtml(ev.gcalId||'')}','${escHtml(ev.source)}')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+            Delete
+          </button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  /* ── Event Modal ─────────────────────────── */
+  window.openEventModal = function(eventId) {
+    const ev = eventId ? allEvents.find(e => e.id === eventId) : null;
+    $('event-modal-title').textContent = ev ? 'Edit Event' : 'New Event';
+    $('ev-id').value      = ev?.id      || '';
+    $('ev-gcal-id').value = ev?.gcalId  || '';
+    $('ev-title').value   = ev?.title   || '';
+    $('ev-start').value   = ev ? fmtDtLocal(ev.start) : '';
+    $('ev-end').value     = ev ? fmtDtLocal(ev.end)   : '';
+    $('ev-location').value = ev?.location || '';
+    $('ev-desc').value    = ev?.desc    || '';
+    $('ev-color').value   = ev?.colorId || '11';
+    $('ev-notify').checked = false;
+    // Sync color swatches
+    document.querySelectorAll('.color-swatch').forEach(sw => {
+      sw.classList.toggle('selected', sw.dataset.color === (ev?.colorId || '11'));
+    });
+    $('event-modal').classList.remove('hidden');
+  };
+
+  window.selectColor = function(el) {
+    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+    el.classList.add('selected');
+    $('ev-color').value = el.dataset.color;
+  };
+
+  window.saveEvent = async function() {
+    const title    = $('ev-title').value.trim();
+    const startVal = $('ev-start').value;
+    const endVal   = $('ev-end').value;
+    if (!title)    { toast('Event title is required.', 'error'); return; }
+    if (!startVal) { toast('Start date/time is required.', 'error'); return; }
+    if (!endVal)   { toast('End date/time is required.', 'error'); return; }
+
+    const start = new Date(startVal);
+    const end   = new Date(endVal);
+    if (end <= start) { toast('End time must be after start time.', 'error'); return; }
+
+    const btn = $('save-event-btn');
+    btn.textContent = 'Saving…'; btn.disabled = true;
+
+    const eventData = {
+      title,
+      start,
+      end,
+      location:  $('ev-location').value.trim(),
+      desc:      $('ev-desc').value.trim(),
+      colorId:   $('ev-color').value,
+      updatedAt: FSV.serverTimestamp(),
+      updatedBy: currentUser.email
+    };
+
+    const shouldNotify = $('ev-notify').checked;
+    const existingId   = $('ev-id').value;
+    const gcalId       = $('ev-gcal-id').value;
+
+    try {
+      // ── Save to Firestore (primary storage for admin-created events) ──
+      if (existingId) {
+        await db.collection('adminEvents').doc(existingId).set(
+          { ...eventData, id: existingId }, { merge: true }
+        );
+      } else {
+        const ref = await db.collection('adminEvents').add({
+          ...eventData, createdAt: FSV.serverTimestamp(), createdBy: currentUser.email
+        });
+        eventData.id = ref.id;
+      }
+
+      // ── Try Google Calendar API if OAuth token available ──
+      if (gcalAccessToken) {
+        const gcalBody = {
+          summary:     title,
+          location:    eventData.location,
+          description: eventData.desc,
+          colorId:     eventData.colorId,
+          start: { dateTime: start.toISOString(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+          end:   { dateTime: end.toISOString(),   timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }
+        };
+        const method = gcalId ? 'PUT'  : 'POST';
+        const url    = gcalId
+          ? `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events/${gcalId}`
+          : `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events`;
+        const gcalRes = await fetch(url, {
+          method,
+          headers: {
+            'Authorization': `Bearer ${gcalAccessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(gcalBody)
+        });
+        if (!gcalRes.ok) {
+          const errData = await gcalRes.json().catch(() => ({}));
+          throw new Error('GCal: ' + (errData.error?.message || gcalRes.status));
+        }
+        const savedGcal = await gcalRes.json();
+        // Persist gcalId back to Firestore
+        await db.collection('adminEvents').doc(existingId || eventData.id).set(
+          { gcalId: savedGcal.id }, { merge: true }
+        );
+        toast('Saved to Google Calendar!', 'success');
+      } else {
+        toast('Event saved locally. Connect Google Calendar to sync.', 'info');
+      }
+
+      // ── Send notification if requested ──
+      if (shouldNotify) {
+        const action = existingId ? 'updated' : 'added';
+        await db.collection('adminNotifications').add({
+          type:    'calendar',
+          title:   `📅 Event ${action}`,
+          body:    `"${title}" has been ${action}. ${start.toLocaleDateString([], {weekday:'short',month:'short',day:'numeric'})} at ${start.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}`,
+          eventId: existingId || eventData.id,
+          sentAt:  FSV.serverTimestamp(),
+          sentBy:  currentUser.email,
+          read:    false
+        });
+        toast('Notification sent to all users!', 'success');
+      }
+
+      closeModal('event-modal');
+      loadCalendarEvents();
+      loadDashboard();
+
+    } catch(e) {
+      console.error('Save event error:', e);
+      toast('Error saving event: ' + (e.message || 'Unknown error'), 'error');
+    } finally {
+      btn.textContent = 'Save Event'; btn.disabled = false;
+    }
+  };
+
+  window.deleteEvent = async function(eventId, gcalId, source) {
+    const ok = await confirm(
+      'Delete Event',
+      'Are you sure you want to delete this event? This cannot be undone.',
+      'Delete Event'
+    );
+    if (!ok) return;
+
+    try {
+      // Delete from Firestore
+      if (source === 'firestore' || !gcalId) {
+        await db.collection('adminEvents').doc(eventId).delete().catch(()=>{});
+      }
+
+      // Delete from Google Calendar if OAuth available
+      if (gcalId && gcalAccessToken) {
+        const res = await fetch(
+          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events/${gcalId}`,
+          { method: 'DELETE', headers: { 'Authorization': `Bearer ${gcalAccessToken}` } }
+        );
+        if (!res.ok && res.status !== 404) {
+          throw new Error('Google Calendar deletion failed: ' + res.status);
+        }
+      } else if (gcalId && !gcalAccessToken) {
+        toast('Event removed locally. Connect Google Calendar to sync deletion.', 'info');
+      }
+
+      toast('Event deleted.', 'success');
+      loadCalendarEvents();
+      loadDashboard();
+    } catch(e) {
+      toast('Could not delete event: ' + e.message, 'error');
+    }
+  };
+
+  /* ══════════════════════════════════════════
+     MODERATION — CHAT & PRAYER
+  ══════════════════════════════════════════ */
+  window.switchModTab = function(tab) {
+    currentModTab = tab;
+    $('mod-tab-global').classList.toggle('active', tab === 'global');
+    $('mod-tab-prayer').classList.toggle('active', tab === 'prayer');
+    $('mod-search').value = '';
+    renderMessages();
+  };
+
+  async function loadMessages() {
+    $('mod-message-list').innerHTML = '<div class="loading-row"><div class="spinner"></div> Loading…</div>';
+    try {
+      // Unsubscribe previous listeners
+      if (unsubs.global) { unsubs.global(); unsubs.global = null; }
+      if (unsubs.prayer) { unsubs.prayer(); unsubs.prayer = null; }
+
+      // Global chat — real-time
+      unsubs.global = db.collection('chat').doc('global').collection('messages')
+        .orderBy('createdAt', 'desc').limit(100)
+        .onSnapshot(snap => {
+          allMessages = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          renderMessages();
+          updateModBadge();
+        }, err => console.warn('Global chat error:', err));
+
+      // Prayer — real-time
+      unsubs.prayer = db.collection('chat').doc('prayer').collection('messages')
+        .orderBy('createdAt', 'desc').limit(100)
+        .onSnapshot(snap => {
+          allPrayers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          renderMessages();
+          updateModBadge();
+        }, err => console.warn('Prayer error:', err));
+
+    } catch(e) {
+      $('mod-message-list').innerHTML = '<div class="empty-state"><div class="empty-state-sub">Error loading messages</div></div>';
+    }
+  }
+
+  function updateModBadge() {
+    const total = allMessages.length + allPrayers.length;
+    const b = $('mod-badge');
+    b.textContent = total;
+    b.classList.toggle('hidden', total === 0);
+    $('stat-chat').textContent = allMessages.length;
+    $('stat-prayer').textContent = allPrayers.length;
+  }
+
+  function renderMessages() {
+    const query  = $('mod-search')?.value.toLowerCase() || '';
+    const source = currentModTab === 'global' ? allMessages : allPrayers;
+    const filtered = query
+      ? source.filter(m => (m.text||'').toLowerCase().includes(query) || (m.displayName||'').toLowerCase().includes(query))
+      : source;
+
+    const el = $('mod-message-list');
+    if (!filtered.length) {
+      el.innerHTML = `<div class="empty-state">
+        <div class="empty-state-icon">${currentModTab==='prayer'?'🙏':'💬'}</div>
+        <div class="empty-state-title">No Messages</div>
+        <div class="empty-state-sub">${query ? 'No results for "'+escHtml(query)+'"' : 'No '+currentModTab+' messages'}</div>
+      </div>`;
+      return;
+    }
+    el.innerHTML = filtered.map(msg => {
+      const ini = initials(msg.displayName || 'U');
+      const ts  = fmtTs(msg.createdAt);
+      return `<div class="msg-mod-card" id="msg-${escHtml(msg.id)}">
+        <div class="msg-mod-avatar">${escHtml(ini)}</div>
+        <div class="msg-mod-body">
+          <div class="msg-mod-header">
+            <span class="msg-mod-sender">${escHtml(msg.displayName || 'Anonymous')}</span>
+            <span class="msg-mod-time">${escHtml(ts)}</span>
+          </div>
+          <div class="msg-mod-text">${escHtml(msg.text || '')}</div>
+        </div>
+        <button class="msg-mod-del" onclick="deleteMessage('${escHtml(msg.id)}','${currentModTab}')" title="Delete message">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+        </button>
+      </div>`;
+    }).join('');
+  }
+
+  window.filterMessages = renderMessages;
+
+  window.deleteMessage = async function(msgId, channel) {
+    const ok = await confirm(
+      'Remove Message',
+      'This message will be permanently removed from the chat. Continue?',
+      'Remove'
+    );
+    if (!ok) return;
+    try {
+      const col = channel === 'global' ? 'global' : 'prayer';
+      await db.collection('chat').doc(col).collection('messages').doc(msgId).delete();
+      toast('Message removed.', 'success');
+    } catch(e) {
+      toast('Could not remove message: ' + e.message, 'error');
+    }
+  };
+
+  /* ══════════════════════════════════════════
+     DIRECTORY
+  ══════════════════════════════════════════ */
+  async function loadDirectory() {
+    $('dir-list').innerHTML = '<div class="loading-row"><div class="spinner"></div> Loading…</div>';
+    try {
+      if (unsubs.directory) { unsubs.directory(); unsubs.directory = null; }
+      unsubs.directory = db.collection('users').orderBy('displayName', 'asc')
+        .onSnapshot(snap => {
+          allUsers = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+          renderDirectory();
+          $('stat-users').textContent = allUsers.length;
+        }, err => {
+          console.warn('Directory error:', err);
+          $('dir-list').innerHTML = '<div class="empty-state"><div class="empty-state-sub">Could not load directory</div></div>';
+        });
+    } catch(e) {
+      $('dir-list').innerHTML = '<div class="empty-state"><div class="empty-state-sub">Error loading directory</div></div>';
+    }
+  }
+
+  function renderDirectory() {
+    const query = ($('dir-search')?.value || '').toLowerCase();
+    const filtered = query
+      ? allUsers.filter(u => (u.displayName||'').toLowerCase().includes(query)
+          || (u.homeChurch||'').toLowerCase().includes(query)
+          || (u.email||'').toLowerCase().includes(query))
+      : allUsers;
+
+    const el = $('dir-list');
+    if (!filtered.length) {
+      el.innerHTML = `<div class="empty-state">
+        <div class="empty-state-icon">👤</div>
+        <div class="empty-state-title">No Entries Found</div>
+        <div class="empty-state-sub">${query ? 'No results for "'+escHtml(query)+'"' : 'Directory is empty'}</div>
+      </div>`;
+      return;
+    }
+    el.innerHTML = filtered.map(u => {
+      const ini = initials(u.displayName || u.email || 'U');
+      return `<div class="dir-card">
+        <div class="dir-avatar">${escHtml(ini)}</div>
+        <div class="dir-info">
+          <div class="dir-name">${escHtml(u.displayName || '—')}</div>
+          ${u.homeChurch ? `<div class="dir-church">⛪ ${escHtml(u.homeChurch)}</div>` : ''}
+          ${u.email      ? `<div class="dir-email">✉ ${escHtml(u.email)}</div>` : ''}
+          ${u.role       ? `<div class="dir-email">🎖 ${escHtml(u.role)}</div>` : ''}
+          ${u.adminEntry ? '<span class="badge badge-gold" style="margin-top:4px;font-size:0.65rem">Admin-added</span>' : ''}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  window.filterDirectory = renderDirectory;
+
+  window.openAddDirectoryModal = function() {
+    $('dir-name').value   = '';
+    $('dir-church').value = '';
+    $('dir-email').value  = '';
+    $('dir-phone').value  = '';
+    $('dir-role').value   = '';
+    $('dir-modal').classList.remove('hidden');
+  };
+
+  window.saveDirectoryEntry = async function() {
+    const name   = $('dir-name').value.trim();
+    const church = $('dir-church').value.trim();
+    const email  = $('dir-email').value.trim();
+    const phone  = $('dir-phone').value.trim();
+    const role   = $('dir-role').value.trim();
+
+    if (!name) { toast('Full name is required.', 'error'); return; }
+
+    const btn = $('save-dir-btn');
+    btn.textContent = 'Saving…'; btn.disabled = true;
+
+    try {
+      // Create a directory-only entry (no auth account)
+      // Use email as doc ID if provided, otherwise auto-generate
+      const docData = {
+        displayName: name,
+        homeChurch:  church,
+        email:       email,
+        phone:       phone,
+        role:        role,
+        adminEntry:  true,
+        createdAt:   FSV.serverTimestamp(),
+        addedBy:     currentUser.email,
+        pushEnabled: false
+      };
+
+      if (email) {
+        // Use a stable ID derived from email
+        const safeId = 'dir_' + email.replace(/[^a-zA-Z0-9]/g, '_');
+        await db.collection('users').doc(safeId).set(docData, { merge: true });
+      } else {
+        await db.collection('users').add(docData);
+      }
+
+      closeModal('dir-modal');
+      toast(`${name} added to directory!`, 'success');
+      loadDashboard();
+    } catch(e) {
+      toast('Could not save: ' + e.message, 'error');
+    } finally {
+      btn.textContent = 'Add Person'; btn.disabled = false;
+    }
+  };
+
+  /* ══════════════════════════════════════════
+     NOTIFICATIONS
+  ══════════════════════════════════════════ */
+  window.updateNotifPreview = function() {
+    const title = $('notif-title').value || 'Notification Title';
+    const body  = $('notif-body').value  || 'Your message will appear here…';
+    const type  = $('notif-type').value;
+    const icons = { announcement:'📢', calendar:'📅', urgent:'🚨', prayer:'🙏' };
+    $('notif-prev-title').textContent = `${icons[type]||'📢'} ${title}`;
+    $('notif-prev-body').textContent  = body;
+  };
+
+  window.sendNotification = async function() {
+    const title   = $('notif-title').value.trim();
+    const body    = $('notif-body').value.trim();
+    const type    = $('notif-type').value;
+    const eventId = $('notif-event').value;
+
+    if (!title) { toast('Title is required.', 'error'); return; }
+    if (!body)  { toast('Message body is required.', 'error'); return; }
+
+    const ok = await confirm(
+      'Send Broadcast Notification',
+      `This will send "${title}" to all app users. Continue?`,
+      'Send'
+    );
+    if (!ok) return;
+
+    try {
+      await db.collection('adminNotifications').add({
+        type,
+        title,
+        body,
+        eventId:  eventId || null,
+        sentAt:   FSV.serverTimestamp(),
+        sentBy:   currentUser.email,
+        read:     false
+      });
+
+      // Also write to a 'notifications' collection that the main app can watch
+      await db.collection('notifications').add({
+        type,
+        title,
+        body,
+        eventId:  eventId || null,
+        createdAt: FSV.serverTimestamp(),
+        sentBy:   currentUser.email
+      });
+
+      // Clear form
+      $('notif-title').value = '';
+      $('notif-body').value  = '';
+      $('notif-event').value = '';
+      updateNotifPreview();
+
+      toast('Notification broadcast sent!', 'success');
+      loadNotifHistory();
+      loadDashboard();
+
+      // Also attempt Web Push via Notification API if permission granted
+      if (Notification.permission === 'granted') {
+        const icons = { announcement:'📢', calendar:'📅', urgent:'🚨', prayer:'🙏' };
+        new Notification(`${icons[type]||'📢'} ${title}`, { body, icon: 'logo.png' });
+      }
+
+    } catch(e) {
+      toast('Could not send notification: ' + e.message, 'error');
+    }
+  };
+
+  async function loadNotifHistory() {
+    $('notif-history').innerHTML = '<div class="loading-row"><div class="spinner"></div> Loading…</div>';
+    try {
+      const snap = await db.collection('adminNotifications')
+        .orderBy('sentAt', 'desc').limit(20).get();
+      if (snap.empty) {
+        $('notif-history').innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔔</div><div class="empty-state-title">No Notifications Yet</div></div>';
+        return;
+      }
+      const typeColors = { announcement: 'badge-blue', calendar: 'badge-gold', urgent: 'badge-crimson', prayer: 'badge-green' };
+      const typeIcons  = { announcement:'📢', calendar:'📅', urgent:'🚨', prayer:'🙏' };
+      $('notif-history').innerHTML = snap.docs.map(d => {
+        const n = d.data();
+        const col = typeColors[n.type] || 'badge-blue';
+        return `<div class="card" style="margin-bottom:10px;padding:14px 16px">
+          <div style="display:flex;align-items:flex-start;gap:10px">
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                <span style="font-weight:700;font-size:0.88rem;color:var(--text-primary)">${escHtml(typeIcons[n.type]||'📢')} ${escHtml(n.title)}</span>
+                <span class="badge ${col}" style="flex-shrink:0">${escHtml(n.type||'general')}</span>
+              </div>
+              <div style="font-size:0.8rem;color:var(--text-muted);line-height:1.5">${escHtml(n.body)}</div>
+              <div style="font-size:0.68rem;color:var(--text-dim);margin-top:6px">Sent ${fmtTs(n.sentAt)} by ${escHtml(n.sentBy||'Admin')}</div>
+            </div>
+            <button class="msg-mod-del" onclick="deleteNotif('${d.id}')" title="Remove">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+            </button>
+          </div>
+        </div>`;
+      }).join('');
+    } catch(e) {
+      $('notif-history').innerHTML = '<div class="empty-state"><div class="empty-state-sub">Could not load history</div></div>';
+    }
+  }
+
+  window.deleteNotif = async function(id) {
+    const ok = await confirm('Remove Notification', 'Remove this notification from history?', 'Remove');
+    if (!ok) return;
+    try {
+      await db.collection('adminNotifications').doc(id).delete();
+      toast('Removed.', 'success');
+      loadNotifHistory();
+    } catch(e) { toast('Could not remove.', 'error'); }
+  };
+
+  /* ══════════════════════════════════════════
+     SAFETY TIMEOUT
+  ══════════════════════════════════════════ */
+  setTimeout(() => {
+    if ($('loading-overlay') && !$('loading-overlay').classList.contains('hidden')) {
+      hideLoader();
+      $('auth-screen').classList.remove('hidden');
+    }
+  }, 4000);
+
+  /* ══════════════════════════════════════════
+     PWA SERVICE WORKER
+  ══════════════════════════════════════════ */
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+
+})();
+</script>
+</body>
+</html>
