@@ -1314,39 +1314,125 @@
     }
   }
 
-  /* ════════════════════════════════════════════
+  /* ══════════════════════════════════════════
      GOOGLE CALENDAR OAUTH
-     Uses Firebase GoogleAuthProvider so the
-     popup works from any origin/PWA context.
-  ════════════════════════════════════════════ */
-  window.connectGoogleCalendar = async function() {
+     Direct OAuth2 implicit-flow popup.
+     No Firebase domain whitelisting required.
+     Only needs the hosting domain added as an
+     Authorized JavaScript Origin in Google Cloud.
+  ══════════════════════════════════════════ */
+
+  /* ---- helpers ---- */
+  function buildOAuthUrl() {
+    var redirectUri = window.location.origin + window.location.pathname;
+    // Strip any hash/query so we get a clean page URL as redirect target
+    redirectUri = redirectUri.split("?")[0].split("#")[0];
+    var params = new URLSearchParams({
+      client_id:     GCAL_CLIENT_ID,
+      redirect_uri:  redirectUri,
+      response_type: "token",
+      scope:         "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/userinfo.email",
+      prompt:        "select_account",
+      include_granted_scopes: "true"
+    });
+    return "https://accounts.google.com/o/oauth2/v2/auth?" + params.toString();
+  }
+
+  /* Parse access_token out of a URL hash string */
+  function parseTokenFromHash(hash) {
+    var params = {};
+    hash.replace(/^#/, "").split("&").forEach(function(pair) {
+      var parts = pair.split("=");
+      if (parts.length === 2) params[decodeURIComponent(parts[0])] = decodeURIComponent(parts[1]);
+    });
+    return params.access_token || null;
+  }
+
+  /* Fetch the email address for the token to show in the UI */
+  async function fetchGoogleEmail(token) {
     try {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      provider.addScope('https://www.googleapis.com/auth/calendar');
-      provider.setCustomParameters({ prompt: 'select_account' });
+      var res = await fetch(
+        "https://www.googleapis.com/oauth2/v3/userinfo",
+        { headers: { Authorization: "Bearer " + token } }
+      );
+      if (!res.ok) return "Google account";
+      var data = await res.json();
+      return data.email || "Google account";
+    } catch(e) { return "Google account"; }
+  }
 
-      const result = await auth.signInWithPopup(provider);
-      const credential = firebase.auth.GoogleAuthProvider.credentialFromResult(result);
-      gcalAccessToken = credential && credential.accessToken;
+  window.connectGoogleCalendar = function() {
+    var w = 520, h = 640;
+    var left = Math.max(0, (screen.width  - w) / 2);
+    var top  = Math.max(0, (screen.height - h) / 2);
+    var popup = window.open(
+      buildOAuthUrl(),
+      "ucjc_gcal_auth",
+      "width=" + w + ",height=" + h + ",left=" + left + ",top=" + top +
+      ",toolbar=no,menubar=no,scrollbars=yes,resizable=yes"
+    );
 
-      if (!gcalAccessToken) throw new Error('No access token returned.');
-
-      const pd = result.user && result.user.providerData;
-      const gpd = pd && pd.find(function(p){ return p.providerId === 'google.com'; });
-      const googleEmail = (gpd && gpd.email) || (result.user && result.user.email) || 'Google account';
-
-      $('oauth-dot').classList.add('connected');
-      $('oauth-bar-text').innerHTML = '<strong>Connected</strong> — ' + escHtml(googleEmail);
-      $('oauth-btn').textContent = 'Reconnect';
-      toast('Google Calendar connected!', 'success');
-    } catch (err) {
-      console.error('Google Calendar OAuth error:', err);
-      if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
-        toast('Authorization cancelled.', 'info');
-        return;
-      }
-      toast('Could not connect Google Calendar: ' + (err.message || err.code || 'Unknown error'), 'error');
+    if (!popup || popup.closed) {
+      toast("Popup blocked. Please allow popups for this site and try again.", "error");
+      return;
     }
+
+    // Poll the popup every 300 ms for the access token in its URL hash
+    var pollTimer = setInterval(async function() {
+      try {
+        // Will throw a cross-origin error while Google is loaded —
+        // that is expected. Once the popup redirects back to our
+        // origin we can read the hash.
+        if (popup.closed) {
+          clearInterval(pollTimer);
+          if (!gcalAccessToken) toast("Authorization window closed.", "info");
+          return;
+        }
+
+        var popupUrl = popup.location.href;
+        // Not yet back on our origin — keep waiting
+        if (!popupUrl || popupUrl === "about:blank") return;
+        if (popupUrl.indexOf(window.location.origin) === -1) return;
+
+        // We are back on our origin — grab the token
+        clearInterval(pollTimer);
+        popup.close();
+
+        var token = parseTokenFromHash(popup.location.hash);
+        if (!token) {
+          // Check for error in hash
+          var errParams = {};
+          popup.location.hash.replace(/^#/, "").split("&").forEach(function(p) {
+            var kv = p.split("=");
+            if (kv.length === 2) errParams[kv[0]] = decodeURIComponent(kv[1]);
+          });
+          toast("Authorization failed: " + (errParams.error_description || errParams.error || "No token received."), "error");
+          return;
+        }
+
+        gcalAccessToken = token;
+
+        // Get user email to display
+        var googleEmail = await fetchGoogleEmail(token);
+
+        $("oauth-dot").classList.add("connected");
+        $("oauth-bar-text").innerHTML = "<strong>Connected</strong> &mdash; " + escHtml(googleEmail);
+        $("oauth-btn").textContent = "Reconnect";
+        toast("Google Calendar connected!", "success");
+
+      } catch(crossOriginErr) {
+        // Still on Google's domain — normal, keep polling
+      }
+    }, 300);
+
+    // Safety timeout: stop polling after 3 minutes
+    setTimeout(function() {
+      if (!gcalAccessToken) {
+        clearInterval(pollTimer);
+        if (popup && !popup.closed) popup.close();
+        toast("Authorization timed out. Please try again.", "error");
+      }
+    }, 3 * 60 * 1000);
   };
 
   /* ══════════════════════════════════════════
