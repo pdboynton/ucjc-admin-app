@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "buildCommand": null,
+  "outputDirectory": ".",
+  "routes": [
+    {
+      "src": "/sw.js",
+      "headers": { "Cache-Control": "no-cache, no-store, must-revalidate" },
+      "dest": "/sw.js"
+    },
+    {
+      "src": "/(.*\\.(js|css|png|jpg|webp|svg|ico|json|webmanifest))",
+      "dest": "/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
+}
