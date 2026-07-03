@@ -861,13 +861,21 @@ async function renderOverview(refresh) {
 
   const statsEl = $('ov-stats');
   try {
-    const [prayerMsgs, adminMsgs, deptMsgsArr, feedbackDocs, rsvpDocs] = await Promise.all([
-      prayerGroupId ? db.collection('chatGroups').doc(prayerGroupId).collection('messages').where('type','==','prayer_request').get() : Promise.resolve({docs:[]}),
-      adminGroupId  ? db.collection('chatGroups').doc(adminGroupId).collection('messages').get() : Promise.resolve({docs:[]}),
-      Promise.all(DEPARTMENTS.map(d => deptGroupIds[d.key] ? db.collection('chatGroups').doc(deptGroupIds[d.key]).collection('messages').get() : Promise.resolve({docs:[]}))),
-      db.collectionGroup('responses').get().catch(()=>({docs:[]})),
-      db.collection('events').doc(RSVP_DOC).collection('rsvps').get().catch(()=>({docs:[]}))
-    ]);
+    const prayerMsgs = await loadWithLogging("Prayer Requests", () =>
+      prayerGroupId ? db.collection('chatGroups').doc(prayerGroupId).collection('messages').where('type','==','prayer_request').get() : Promise.resolve({docs:[]})
+    );
+    const adminMsgs = await loadWithLogging("Admin Messages", () =>
+      adminGroupId ? db.collection('chatGroups').doc(adminGroupId).collection('messages').get() : Promise.resolve({docs:[]})
+    );
+    const deptMsgsArr = await loadWithLogging("Department Messages", () =>
+      Promise.all(DEPARTMENTS.map(d => deptGroupIds[d.key] ? db.collection('chatGroups').doc(deptGroupIds[d.key]).collection('messages').get() : Promise.resolve({docs:[]})))
+    );
+    const feedbackDocs = await loadWithLogging("Session Feedback", () =>
+      db.collectionGroup('responses').get()
+    );
+    const rsvpDocs = await loadWithLogging("RSVPs", () =>
+      db.collection('events').doc(RSVP_DOC).collection('rsvps').get()
+    );
 
     // ── Prayer requests ──
     const prayerDates = prayerMsgs.docs.map(d => toDate(d.data().createdAt));
@@ -993,6 +1001,24 @@ async function renderOverview(refresh) {
   } catch (e) {
     console.error('renderOverview error', e);
     statsEl.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="icon">⚠️</div><p>Could not load dashboard data. ${e.code==='permission-denied' ? 'Check Firestore rules (see Settings).' : 'Check your connection and try refreshing.'}</p></div>`;
+  }
+}
+
+
+async function loadWithLogging(name, loader) {
+  console.group(`🚀 Loading ${name}`);
+  console.time(name);
+  try {
+    const result = await loader();
+    console.timeEnd(name);
+    console.log(`✅ ${name} loaded successfully`);
+    console.groupEnd();
+    return result;
+  } catch (err) {
+    console.timeEnd(name);
+    console.error(`❌ ${name} failed to load`, err);
+    console.groupEnd();
+    return {docs:[]};
   }
 }
 
