@@ -343,7 +343,7 @@
     #sidebar-scrim.show{ display:block; }
   }
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -821,6 +821,25 @@ function bucketCounts(dates, monthsBack) {
 }
 
 async function renderOverview(refresh) {
+  // Realtime listeners on chatGroups/users can fire renderOverview() again
+  // while a previous call is still awaiting its Firestore reads (that's what
+  // produced the "Timer already exists" console spam). Coalesce: if a call
+  // is already in flight, just remember that another refresh was requested
+  // and let the in-flight call re-run once it finishes, instead of stacking
+  // overlapping calls that race to update the same DOM nodes.
+  if (renderOverview._inFlight) { renderOverview._queued = true; return; }
+  renderOverview._inFlight = true;
+  try {
+    await renderOverviewImpl(refresh);
+  } finally {
+    renderOverview._inFlight = false;
+    if (renderOverview._queued) {
+      renderOverview._queued = false;
+      renderOverview(true);
+    }
+  }
+}
+async function renderOverviewImpl(refresh) {
   const el = $('section-overview');
   if (!el.innerHTML || refresh) {
     el.innerHTML = `
@@ -1006,16 +1025,20 @@ async function renderOverview(refresh) {
 
 
 async function loadWithLogging(name, loader) {
+  // Uses performance.now() instead of console.time/timeEnd: named timers
+  // collide (and log noisy "already exists"/"does not exist" warnings) if
+  // two loads with the same name are ever in flight at once, which can
+  // happen when realtime listeners re-trigger a render mid-flight.
   console.group(`🚀 Loading ${name}`);
-  console.time(name);
+  const started = performance.now();
   try {
     const result = await loader();
-    console.timeEnd(name);
+    console.log(`${name}: ${(performance.now() - started).toFixed(1)}ms`);
     console.log(`✅ ${name} loaded successfully`);
     console.groupEnd();
     return result;
   } catch (err) {
-    console.timeEnd(name);
+    console.log(`${name}: ${(performance.now() - started).toFixed(1)}ms`);
     console.error(`❌ ${name} failed to load`, err);
     console.groupEnd();
     return {docs:[]};
@@ -1368,6 +1391,63 @@ function fixedGroupDocId(type, deptKey) {
   if (type === 'department') return 'dept-' + deptKey;
   return null; // standard groups keep auto-generated ids
 }
+
+/* Security rules can't run a `where()` query to find "whichever chatGroups
+   doc has isAdminGroup:true" — a rule's exists()/get() calls need a fixed,
+   known path. Rather than hardcode a specific chatGroups document id (fragile:
+   it breaks if the Admin group was ever created before this console existed,
+   or under a different id), we mirror Admin-group membership into a small
+   dedicated `admins/{uid}` collection every time membership changes here.
+   Firestore rules then check `exists(/admins/{uid})` — simple and correct
+   regardless of what id the Admin chatGroup itself happens to have. */
+async function syncAdminMirror(groupId, uid, isMember) {
+  const g = groupById(groupId);
+  if (!g || !g.isAdminGroup) return;
+  try {
+    if (isMember) {
+      await db.collection('admins').doc(uid).set({
+        uid, displayName: usersById[uid]?.displayName || '', syncedAt: FSV.serverTimestamp(), syncedBy: currentUser.uid
+      });
+    } else {
+      await db.collection('admins').doc(uid).delete();
+    }
+  } catch (e) {
+    console.warn('Could not sync admins/ mirror for', uid, e);
+    toast('Group membership was updated, but the admins/ permission mirror could not be synced — see Settings.', 'error');
+  }
+}
+
+/* One-time repair: backfills admins/{uid} for every existing member of the
+   Admin chat group. Needed once for any admins who were added before this
+   mirror collection existed (e.g. an Admin group that predates this console,
+   or was set up under a different chatGroups document id). Requires the
+   person running it to already pass isAdmin() themselves — see the Settings
+   screen for how to bootstrap the very first admin by hand. */
+window.syncAllAdmins = async function () {
+  if (!adminGroupId) { toast('No Admin group found yet.', 'error'); return; }
+  try {
+    const snap = await db.collection('chatGroups').doc(adminGroupId).collection('members').get();
+    if (!snap.size) { toast('The Admin group has no members yet.', 'error'); return; }
+    let batch = db.batch(); let n = 0; let count = 0;
+    for (const d of snap.docs) {
+      const m = d.data();
+      batch.set(db.collection('admins').doc(d.id), {
+        uid: d.id, displayName: m.displayName || usersById[d.id]?.displayName || '',
+        syncedAt: FSV.serverTimestamp(), syncedBy: currentUser.uid
+      });
+      n++; count++;
+      if (n === 400) { await batch.commit(); batch = db.batch(); n = 0; }
+    }
+    if (n) await batch.commit();
+    toast(`Synced ${count} admin${count===1?'':'s'}.`, 'success');
+  } catch (e) {
+    console.error(e);
+    toast(e.code === 'permission-denied'
+      ? 'Permission denied — you need an admins/{your-uid} doc yourself before you can run this (see Settings).'
+      : 'Could not sync admins.', 'error');
+  }
+};
+
 window.createGroup = async function () {
   const name = $('ng-name').value.trim();
   if (!name) { toast('Enter a group name.', 'error'); return; }
@@ -1398,6 +1478,13 @@ window.createGroup = async function () {
       uid: currentUser.uid, displayName: adminProfile?.displayName || currentUser.email, email: currentUser.email || '',
       addedAt: FSV.serverTimestamp(), addedBy: currentUser.uid
     });
+    if (type === 'admin') {
+      // Bootstraps the admins/ mirror for the very first admin — the creator.
+      await db.collection('admins').doc(currentUser.uid).set({
+        uid: currentUser.uid, displayName: adminProfile?.displayName || currentUser.email,
+        syncedAt: FSV.serverTimestamp(), syncedBy: currentUser.uid
+      });
+    }
     toast('Group created.', 'success');
     closeModal();
   } catch (e) { console.error(e); toast('Could not create group.', 'error'); }
@@ -1530,6 +1617,7 @@ window.addMember = async function (groupId, uid) {
       uid, displayName: u?.displayName || '', email: u?.email || '',
       addedAt: FSV.serverTimestamp(), addedBy: currentUser.uid
     });
+    await syncAdminMirror(groupId, uid, true);
     $('mm-search').value = ''; $('mm-results').classList.add('hidden'); $('mm-results').innerHTML='';
     toast('Member added.', 'success');
     loadMembersList(groupId);
@@ -1544,6 +1632,7 @@ window.removeMember = function (groupId, uid) {
     onConfirm: async () => {
       try {
         await db.collection('chatGroups').doc(groupId).collection('members').doc(uid).delete();
+        await syncAdminMirror(groupId, uid, false);
         toast('Member removed.', 'success');
         loadMembersList(groupId);
       } catch (e) { toast('Could not remove member.', 'error'); }
@@ -1683,9 +1772,11 @@ window.toggleUserGroupMembership = async function (uid, groupId, add) {
     const ref = db.collection('chatGroups').doc(groupId).collection('members').doc(uid);
     if (add) {
       await ref.set({ uid, displayName:u?.displayName||'', email:u?.email||'', addedAt:FSV.serverTimestamp(), addedBy:currentUser.uid });
+      await syncAdminMirror(groupId, uid, true);
       toast('Added to group.', 'success');
     } else {
       await ref.delete();
+      await syncAdminMirror(groupId, uid, false);
       toast('Removed from group.', 'success');
     }
     openUserDetail(uid);
@@ -1896,8 +1987,12 @@ function renderSettings() {
 
     <div class="panel">
       <div class="panel-head"><div><h3>Admin access</h3><div class="desc">Anyone who is a member of the Admin chat group can sign in here. Manage who that includes from the Groups screen.</div></div></div>
-      <div id="settings-admin-info">${adminGroupId ? `<span class="badge badge-crimson">Admin group: ${esc(groupById(adminGroupId)?.name||adminGroupId)}</span>` : `<span class="badge badge-dim">No admin group found</span>`}</div>
+      <div id="settings-admin-info">${adminGroupId ? `<span class="badge badge-crimson">Admin group: ${esc(groupById(adminGroupId)?.name||adminGroupId)} <span style="opacity:.7">(id: ${esc(adminGroupId)})</span></span>` : `<span class="badge badge-dim">No admin group found</span>`}</div>
       <button class="btn btn-outline btn-sm" style="width:auto;margin-top:12px" onclick="adminGroupId && openMembersModal(adminGroupId)">Manage Admins →</button>
+      <div class="field-hint" style="margin-top:14px">
+        <strong style="color:var(--text-primary)">If you're seeing "Missing or insufficient permissions"</strong> on things like session ratings or bookmarks: your security rules' <code>isAdmin()</code> check relies on a small <code>admins/{uid}</code> collection that mirrors this group's membership. If your Admin group already had members before this mirror existed, run a one-time backfill:
+      </div>
+      <button class="btn btn-outline btn-sm" style="width:auto;margin-top:10px" onclick="syncAllAdmins()">🔧 Repair / Sync Admins Collection</button>
     </div>
 
     <div class="panel">
@@ -1908,18 +2003,32 @@ service cloud.firestore {
 
     function isSignedIn() { return request.auth != null; }
 
-    // True if the caller's uid is a member of the Admin group.
-    // Relies on this console always creating the Admin group with the
-    // fixed id "admin-group" (it does this automatically) — that lets
-    // rules reference it directly instead of running a query.
+    // True if the caller's uid has an "admins/{uid}" document. This
+    // console keeps that collection in sync automatically every time
+    // someone is added to or removed from the Admin chat group — see
+    // syncAdminMirror() in the app code — so isAdmin() never has to
+    // hardcode a specific chatGroups document id (which is fragile:
+    // that id can differ across projects, or predate this console).
     function isAdmin() {
       return isSignedIn() &&
-        exists(/databases/$(database)/documents/chatGroups/admin-group/members/$(request.auth.uid));
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    match /admins/{uid} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();   // bootstrap the very first doc by hand in the console
     }
 
     match /users/{uid} {
       allow read: if isSignedIn();                         // member directory
       allow write: if isSignedIn() && request.auth.uid == uid;
+
+      match /bookmarks/{bookmarkId} {
+        allow read, write: if isSignedIn() && request.auth.uid == uid;
+      }
+      match /notes/{noteId} {
+        allow read, write: if isSignedIn() && request.auth.uid == uid;
+      }
     }
 
     match /chatGroups/{groupId} {
@@ -1937,7 +2046,12 @@ service cloud.firestore {
                                                                // write-only submit (Contact Admin / Prayer /
                                                                // Department forms) per the member app's design
         allow update: if isAdmin();                           // "mark handled" in the Inbox screen
+        allow delete: if false;
       }
+    }
+
+    match /chat/{document=**} {
+      allow read, write: if isSignedIn();
     }
 
     match /feedback/{eventId}/responses/{uid} {
@@ -1945,13 +2059,20 @@ service cloud.firestore {
       allow write: if isSignedIn() && request.auth.uid == uid;
     }
 
-    match /events/{eventId}/rsvps/{uid} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn() && request.auth.uid == uid;
+    // Needed for db.collectionGroup('responses') on the Overview/Events screens.
+    match /{path=**}/responses/{uid} {
+      allow read: if isAdmin();
     }
 
-    match /{path=**}/bookmarks/{eventId} {
-      allow read: if isAdmin();                              // powers collectionGroup("bookmarks") interest counts
+    match /events/{eventId}/rsvps/{uid} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && request.auth.uid == uid;
+      allow delete: if false;
+    }
+
+    // Needed for db.collectionGroup('bookmarks') interest counts.
+    match /{path=**}/bookmarks/{bookmarkId} {
+      allow read: if isAdmin();
     }
 
     match /appConfig/{docId} {
@@ -1960,7 +2081,7 @@ service cloud.firestore {
     }
   }
 }</pre>
-      <div class="field-hint" style="margin-top:10px">This is a starting point, not a drop-in replacement — merge it with whatever rules already cover the member app. It assumes the Admin group keeps the fixed id <code>admin-group</code>, which this console creates automatically the first time you make an Admin-type group.</div>
+      <div class="field-hint" style="margin-top:10px">Merge this with whatever rules already cover the member app — don't replace wholesale. <strong>Bootstrapping the first admin:</strong> since <code>admins/{uid}</code> can only be written by an existing admin, create the very first one by hand in the Firebase console (Firestore → <code>admins</code> collection → new document with ID = your Auth UID). Everyone added after that is synced automatically by this console.</div>
       <button class="btn btn-outline btn-sm" style="width:auto;margin-top:10px" onclick="copyRulesSnippet()">Copy</button>
     </div>
 
