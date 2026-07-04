@@ -2078,6 +2078,13 @@ function renderSettings() {
   el.innerHTML = `
     <div class="section-head"><div><h2>Settings</h2><div class="desc">Configuration for this back office.</div></div></div>
 
+    <div class="panel" id="diagnostics-panel">
+      <div class="panel-head"><div><h3>🩺 Permissions diagnostics</h3><div class="desc">Checks the pieces that "Missing or insufficient permissions" errors usually trace back to.</div></div>
+        <button class="btn btn-outline btn-sm" style="width:auto" onclick="runDiagnostics()">Re-run</button>
+      </div>
+      <div id="diagnostics-results"><div class="skel" style="height:90px"></div></div>
+    </div>
+
     <div class="panel">
       <div class="panel-head"><div><h3>Current event window</h3><div class="desc">Defines the date range used for "during the current event" stats on the Overview dashboard.</div></div></div>
       <div class="grid-3">
@@ -2202,7 +2209,67 @@ service cloud.firestore {
         <button class="btn btn-outline btn-sm" style="width:auto" onclick="navigateTo('rsvp')">⭳ RSVPs (open RSVP tab)</button>
       </div>
     </div>`;
+  runDiagnostics();
 }
+
+/* Runs a handful of small, targeted reads to identify exactly which piece of
+   the permissions setup is missing, instead of leaving people to guess from
+   a generic "Missing or insufficient permissions" console error. Each check
+   is a real request against the live rules — not a guess based on client
+   state — so a ✅ here means that specific rule + data combination actually
+   works right now for the signed-in account. */
+window.runDiagnostics = async function () {
+  const box = $('diagnostics-results');
+  if (!box) return;
+  box.innerHTML = `<div class="skel" style="height:90px"></div>`;
+
+  const rows = [];
+
+  // 1. Do you have an admins/{uid} doc at all?
+  let hasAdminDoc = false;
+  try {
+    const snap = await db.collection('admins').doc(currentUser.uid).get();
+    hasAdminDoc = snap.exists;
+    rows.push({
+      ok: hasAdminDoc,
+      label: 'admins/' + currentUser.uid + ' document exists',
+      detail: hasAdminDoc
+        ? 'Found — this account should pass isAdmin() if the rules below are deployed.'
+        : 'Missing. Create this document by hand once in the Firebase console (Firestore → admins → new doc, ID = your UID, any fields) to bootstrap yourself.'
+    });
+  } catch (e) {
+    rows.push({ ok:false, label:'admins/' + currentUser.uid + ' document exists', detail: 'Could not even read this (unexpected — reads should be open to any signed-in user). Error: ' + e.code });
+  }
+
+  // 2. Does an isAdmin()-gated read actually succeed right now?
+  //    (This is the real test — it exercises the deployed rules directly,
+  //    not just whether the admins/ doc exists.)
+  try {
+    await db.collectionGroup('responses').limit(1).get();
+    rows.push({ ok:true, label:'isAdmin()-gated read (feedback responses)', detail: 'Succeeded — your deployed rules recognize this account as an admin.' });
+  } catch (e) {
+    rows.push({
+      ok:false, label:'isAdmin()-gated read (feedback responses)',
+      detail: e.code === 'permission-denied'
+        ? (hasAdminDoc
+            ? 'Denied even though your admins/ doc exists — the deployed rules likely still use the old chatGroups/admin-group check, or haven\'t been redeployed yet. Copy the snippet below and deploy it in Firebase Console → Firestore → Rules → Publish.'
+            : 'Denied — expected, since you don\'t have an admins/ doc yet (see above).')
+        : ('Failed with: ' + e.code)
+    });
+  }
+
+  // 3. Sanity check: signed in at all, and which UID.
+  rows.unshift({ ok:true, neutral:true, label:'Signed in as', detail: (currentUser?.email || '—') + '  ·  UID: ' + (currentUser?.uid || '—') });
+
+  box.innerHTML = rows.map(r => `
+    <div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--border-soft)">
+      <div style="flex-shrink:0;font-size:1rem">${r.neutral ? 'ℹ️' : (r.ok ? '✅' : '❌')}</div>
+      <div>
+        <div style="font-weight:700;font-size:0.84rem">${esc(r.label)}</div>
+        <div style="font-size:0.78rem;color:var(--text-dim);margin-top:2px;line-height:1.5">${esc(r.detail)}</div>
+      </div>
+    </div>`).join('');
+};
 window.saveAppConfig = async function () {
   const name = $('cfg-name').value.trim();
   const start = $('cfg-start').value;
