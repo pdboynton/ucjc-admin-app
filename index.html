@@ -1563,6 +1563,16 @@ async function deleteGroup(groupId) {
 }
 
 /* ── Manage members ───────────────────────────── */
+/* Inline onclick="..." handlers run in global scope, not inside this app's
+   IIFE closure — so they can't reference closure variables like
+   `adminGroupId` directly (that's what threw "adminGroupId is not defined").
+   Anything a button needs from closure state goes through a window-scoped
+   function like this instead. */
+window.openAdminGroupMembers = function () {
+  if (adminGroupId) openMembersModal(adminGroupId);
+  else toast('No Admin group found yet.', 'error');
+};
+
 window.openMembersModal = async function (groupId) {
   const g = groupById(groupId); if (!g) return;
   openModal(`
@@ -2098,7 +2108,7 @@ function renderSettings() {
     <div class="panel">
       <div class="panel-head"><div><h3>Admin access</h3><div class="desc">Anyone who is a member of the Admin chat group can sign in here. Manage who that includes from the Groups screen.</div></div></div>
       <div id="settings-admin-info">${adminGroupId ? `<span class="badge badge-crimson">Admin group: ${esc(groupById(adminGroupId)?.name||adminGroupId)} <span style="opacity:.7">(id: ${esc(adminGroupId)})</span></span>` : `<span class="badge badge-dim">No admin group found</span>`}</div>
-      <button class="btn btn-outline btn-sm" style="width:auto;margin-top:12px" onclick="adminGroupId && openMembersModal(adminGroupId)">Manage Admins →</button>
+      <button class="btn btn-outline btn-sm" style="width:auto;margin-top:12px" onclick="openAdminGroupMembers()">Manage Admins →</button>
       <div class="field-hint" style="margin-top:14px">
         <strong style="color:var(--text-primary)">If you're seeing "Missing or insufficient permissions"</strong> on things like session ratings or bookmarks: your security rules' <code>isAdmin()</code> check relies on a small <code>admins/{uid}</code> collection that mirrors this group's membership. If your Admin group already had members before this mirror existed, run a one-time backfill:
       </div>
