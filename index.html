@@ -798,6 +798,26 @@ async function loadAppConfig() {
 }
 
 /* Groups convenience getters */
+/* Firestore's count() aggregation (collRef.count().get()) has been in the
+   compat SDK since v9.9, but throws synchronously as a plain TypeError in
+   some load/CDN/proxy conditions rather than failing gracefully. Rather than
+   depend on it, try it and fall back to a normal get()+.size — costs more
+   reads on the fallback path, but never breaks the page. */
+async function countDocs(collRef) {
+  try {
+    const snap = await collRef.count().get();
+    return snap.data().count;
+  } catch (e) {
+    try {
+      const snap = await collRef.get();
+      return snap.size;
+    } catch (e2) {
+      console.warn('countDocs fallback also failed', e2);
+      return '—';
+    }
+  }
+}
+
 function groupById(id){ return allGroups.find(g => g.id === id); }
 function groupTypeLabel(g){
   if (g.isAdminGroup) return 'Admin';
@@ -1323,8 +1343,8 @@ async function renderGroups(refresh) {
   }
 
   const counts = await Promise.all(sorted.map(g => Promise.all([
-    db.collection('chatGroups').doc(g.id).collection('members').count().get().then(s=>s.data().count).catch(()=>'—'),
-    db.collection('chatGroups').doc(g.id).collection('messages').count().get().then(s=>s.data().count).catch(()=>'—')
+    countDocs(db.collection('chatGroups').doc(g.id).collection('members')),
+    countDocs(db.collection('chatGroups').doc(g.id).collection('messages'))
   ])));
   sorted.forEach((g,i) => { groupCounts[g.id] = { members: counts[i][0], messages: counts[i][1] }; });
 
