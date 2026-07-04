@@ -4,8 +4,8 @@
    host document) for fast repeat loads / basic offline resilience,
    and let every Firebase/Google Calendar network request pass
    straight through uncached. */
-const CACHE_NAME = 'ucjc-admin-shell-v1';
-const SHELL_URLS = ['/', '/index.html', '/manifest.json'];
+const CACHE_NAME = 'ucjc-admin-shell-v2';
+const SHELL_URLS = ['/', '/index.html', '/manifest.json', '/logo.png', '/favicon.ico'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

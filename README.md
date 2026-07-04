@@ -12,6 +12,10 @@ one new collection (`appConfig`) for a couple of admin-only settings.
 - `manifest.json` — PWA manifest (installable, dark themed to match the member app)
 - `sw.js` — minimal service worker (caches only the static shell; all data is always fetched live)
 - `vercel.json` — deploy config if you host this on Vercel like the member app
+- `logo.png` — **you need to add this.** Referenced by the login screen, sidebar, loading screen, and `manifest.json`'s home-screen icon. Any reasonably square image works; it's scaled with `object-fit: contain` at each spot (88px on the login screen, 30px in the sidebar, 56px on the loading screen).
+- `favicon.ico` — **you need to add this too.** Referenced by the `<link rel="icon">` tag in `index.html`.
+
+Place both files in the same folder as `index.html` before deploying.
 
 ## 1. Deploy it
 
@@ -99,6 +103,12 @@ auto-generated IDs.
   bookmark ("interest") counts per session.
 - **RSVPs** — attendee list, guest counts, attending/not-attending breakdown,
   CSV export, for the app's featured RSVP event.
+- **Notifications** — send an announcement, calendar update, urgent alert, or
+  prayer notice: writes a document to `notifications` with `title`, `body`,
+  `type` (`announcement` | `calendar` | `urgent` | `prayer`), and `createdAt`.
+  Shows the last 30 sent below the form. This console only writes the
+  document — whatever turns it into a push notification or in-app banner on
+  the member app side reads this same collection.
 - **Settings** — the "current event" date range used by dashboard stats, admin
   group management shortcut, the Firestore rules snippet, and data exports.
 
